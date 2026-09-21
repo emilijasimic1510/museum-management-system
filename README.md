@@ -59,7 +59,7 @@ recommendation generation.
 - [x] Extended project specification
 - [x] Initial EER model
 - [ ] Relational model
-- [ ] Spring Boot project setup
+- [x] Spring Boot project setup
 - [ ] Angular project setup
 - [ ] PostgreSQL migrations
 - [ ] Authentication and authorization
@@ -69,5 +69,141 @@ recommendation generation.
 
 ## Running the project
 
-Setup instructions will be added after the initial backend, frontend and
-Docker configuration are completed.
+
+### Requirements
+
+- Docker Desktop running with Linux containers.
+- JDK 21 (a JDK, not just a JRE). Maven is downloaded by the committed Wrapper;
+  no separate Maven installation is required. Internet is needed on the first run.
+- Free local ports: 15432, 7474, 7687 and 8081, or alternatives set in `.env`.
+
+The following commands are for **Windows CMD**, starting in the repository root
+(the directory containing `compose.yaml`, not its parent).
+
+```cmd
+cd /d C:\Users\DELL\Desktop\museum-management-system\museum-management-system
+if not exist .env copy .env.example .env
+notepad .env
+```
+
+Set your own passwords before the first startup. Keep `NEO4J_USERNAME=neo4j`:
+Neo4j Docker cannot change its initial username. Its password must have at least
+8 characters. `.env` is ignored by Git; `.env.example` contains examples only.
+Use plain `KEY=value` entries without surrounding quotes or shell expressions.
+Changing database credentials in `.env` does not change credentials in an already
+initialized volume; those must be changed in the database itself.
+
+### Start and inspect the databases
+
+```cmd
+docker compose config --quiet
+docker compose up -d
+docker compose ps
+docker compose logs --tail=100 postgres neo4j
+docker compose up -d --wait --wait-timeout 180
+```
+
+Both services should become `healthy`. `docker compose config` also validates and
+prints the resolved configuration, including passwords; use `--quiet` to avoid
+printing secrets. Ports are bound to localhost. The services share the `museum`
+network and use named `postgres_data`, `neo4j_data` and `neo4j_logs` volumes.
+Neo4j Browser is available at http://localhost:7474 (or `NEO4J_HTTP_PORT`).
+
+### Start the backend locally
+
+Set `JAVA_HOME` to the actual installed JDK 21 directory, for example:
+
+```cmd
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+java -version
+cd backend
+mvnw.cmd spring-boot:run
+```
+
+The JDK path above is an example; use the full directory name on your machine.
+The backend imports the root `.env` as a properties file when started from
+`backend/` (or the repository root). Real environment variables override these
+file values. PostgreSQL uses `localhost:POSTGRES_PORT`; Neo4j uses
+`bolt://localhost:NEO4J_BOLT_PORT`. Optional `POSTGRES_HOST` and `NEO4J_HOST`
+environment variables override the host. `BACKEND_PORT` defaults to 8081.
+The old `NEO4J_URI`, `JWT_SECRET` and `FRONTEND_PORT` entries, if present in an
+existing `.env`, are unused in this phase.
+
+In another CMD window:
+
+```cmd
+curl.exe -i http://localhost:8081/api/health
+```
+
+Expected HTTP 200 and JSON (property order is not significant):
+
+```json
+{"status":"UP","application":"museum-backend"}
+```
+
+Use your `BACKEND_PORT` if changed. This is application liveness, not a database
+readiness check. Only GET `/api/health` is public. Other routes return 401 to
+unauthenticated requests; there is no login, JWT, or generated default user.
+
+### Run tests
+
+With JDK 21 selected, from `backend/`:
+
+```cmd
+mvnw.cmd clean test
+```
+
+Or from the repository root:
+
+```cmd
+backend\mvnw.cmd -f backend\pom.xml clean test
+```
+
+The three tests cover Spring context startup, the exact public health response,
+and protection of other routes. They do not require Docker: the context test
+uses an isolated in-memory H2 database, with Flyway and Hibernate validation
+still enabled. Neo4j creates a lazy driver without querying a live server.
+Actual PostgreSQL startup and Neo4j readiness are checked separately with the
+running application and Docker healthchecks.
+
+Hibernate uses `ddl-auto: validate`. Flyway is enabled without migrations at
+this stage. It may create only its own `flyway_schema_history` metadata table;
+there are no business tables. A no-migrations warning is expected.
+
+### Stop
+
+Stop the foreground backend with `Ctrl+C`. From the repository root:
+
+```cmd
+docker compose stop
+docker compose start
+```
+
+To remove the containers and network while retaining database volumes:
+
+```cmd
+docker compose down
+```
+
+Do not add `-v` if you want to preserve database data. No Angular application,
+business entities, EER migrations, authentication flow or recommendations are
+implemented in this infrastructure phase.
+
+### Local development ports
+
+The verified configuration uses `POSTGRES_PORT=15432`, `BACKEND_PORT=8081`,
+`NEO4J_HTTP_PORT=7474` and `NEO4J_BOLT_PORT=7687`. These values are also in
+`.env.example`. Ports 5432, 5433 and 8080 were occupied or reserved locally.
+PostgreSQL still listens on port 5432 inside its container.
+
+For an existing `.env`, ensure the port values match. Environment variables set
+in CMD override `.env`; clear old overrides in the same window if necessary:
+
+```cmd
+set "POSTGRES_PORT="
+set "BACKEND_PORT="
+```
+
+Use the same PostgreSQL host port for Compose and the backend. Do not stop
+unrelated local processes to free the old ports.

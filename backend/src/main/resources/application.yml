@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: museum-backend
+  config:
+    import: "optional:file:./.env[.properties],optional:file:../.env[.properties]"
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:15432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  neo4j:
+    uri: bolt://${NEO4J_HOST:localhost}:${NEO4J_BOLT_PORT:7687}
+    authentication:
+      username: ${NEO4J_USERNAME}
+      password: ${NEO4J_PASSWORD}
+
+server:
+  port: ${BACKEND_PORT:8081}
