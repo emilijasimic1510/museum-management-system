@@ -55,6 +55,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         ensurePrice(eveningExhibition, "ODRASLI", new BigDecimal("6.00"));
         ensurePrice(eveningExhibition, "STUDENT", new BigDecimal("4.00"));
         Long author = ensureAuthor("Mila", "Jovanović");
+        Long secondAuthor = ensureAuthor("Luka", "Petrović");
         Long exhibit1 = ensureExhibit("Tišina u plavom", "2024", "SLIKA", "Ulje na platnu", "Srbija", "Dnevnik svetlosti.", "DEMO-EX-001");
         Long exhibit2 = ensureExhibit("Dodir prostora", "2023", "SKULPTURA", "Drvo i metal", "Vojvodina", "Materijal kao sećanje.", "DEMO-EX-002");
         Long exhibit3 = ensureExhibit("Pre nego što svane", "2025", "FOTOGRAFIJA", "Analogna fotografija", "Novi Sad", "Grad između dva trenutka.", "DEMO-EX-003");
@@ -64,11 +65,14 @@ public class DemoDataSeeder implements ApplicationRunner {
         ensureParticipation(exhibition, exhibit3, 3, "DEMO-QR-003", "Pogled ka gradu koji se budi.");
         ensureContent("DEMO-QR-001", "TEKST", "demo/tišina-u-plavom.txt");
         ensureContent("DEMO-QR-002", "TEKST", "demo/dodir-prostora.txt");
-        ensureContent("DEMO-QR-003", "AUDIO", "demo/pre-nego-sto-svane.mp3");
+        // Replace only the original missing demo audio placeholder; preserve all other content.
+        jdbc.update("update digitalni_sadrzaj d set tip_sadrzaja='TEKST',putanja='demo/pre-nego-sto-svane.txt' from ucesce_eksponata_na_izlozbi p where p.id_ucesca=d.ucesce_id and p.qr_token=? and d.tip_sadrzaja='AUDIO' and d.putanja='demo/pre-nego-sto-svane.mp3'", "DEMO-QR-003");
+        ensureContent("DEMO-QR-003", "TEKST", "demo/pre-nego-sto-svane.txt");
         Long sculpture1=ensureExhibit("Krug u bronzi", "2023", "SKULPTURA", "Bronza", "Srbija", "Odnos pune forme i praznog prostora.", "DEMO-SC-001");
         Long sculpture2=ensureExhibit("Ritam kamena", "2024", "SKULPTURA", "Kamen", "Srbija", "Ponavljanje oblika i promena perspektive.", "DEMO-SC-002");
         Long sculpture3=ensureExhibit("Linija u pokretu", "2025", "SKULPTURA", "Metal", "Srbija", "Svetlost i senka u pokretu posetioca.", "DEMO-SC-003");
         ensureAuthorship(author,sculpture1);ensureAuthorship(author,sculpture2);ensureAuthorship(author,sculpture3);
+        ensureAuthorship(secondAuthor,sculpture1);ensureAuthorship(secondAuthor,sculpture2);
         ensureParticipation(eveningExhibition,sculpture1,1,"DEMO-SCULPTURE-QR-001","Počnite obilazak odnosom bronzane forme i praznine.");
         ensureParticipation(eveningExhibition,sculpture2,2,"DEMO-SCULPTURE-QR-002","Uporedite teksturu kamena sa prethodnom bronzanom formom.");
         ensureParticipation(eveningExhibition,sculpture3,3,"DEMO-SCULPTURE-QR-003","Završite obilazak posmatranjem senke iz različitih uglova.");

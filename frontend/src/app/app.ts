@@ -13,6 +13,7 @@ import { Auth } from './core/auth';
         <span class="badge">Blagajnik</span>
       }@else if(!auth.session() || auth.isVisitor()){
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Istražite</a>
+        <a routerLink="/exhibits" routerLinkActive="active">Digitalni katalog</a>
         @if(auth.isVisitor()){<a routerLink="/tickets" routerLinkActive="active">Ulaznice</a><a routerLink="/visits" routerLinkActive="active">Posete</a><a routerLink="/recommendations" routerLinkActive="active">Za vas</a><a routerLink="/profile" routerLinkActive="active">Profil</a>}
       }
       @if(auth.session()){<button class="text-button" (click)="auth.logout()">Odjava</button>}

@@ -38,6 +38,18 @@ class LocalDemoJourneyTests extends PostgresTestBase {
     private String login(String email) throws Exception {
         return call(post("/api/auth/login"),null,Map.of("email",email,"password",DemoDataSeeder.PASSWORD),200).get("accessToken").asText();
     }
+    @Test void catalogSeedIsConnectedAndIdempotent() {
+        seed.seed();
+        var before=jdbc.queryForList("select autor_id,eksponat_id from autorstvo order by autor_id,eksponat_id");
+        Integer contents=jdbc.queryForObject("select count(*) from digitalni_sadrzaj",Integer.class);
+        seed.seed();
+        assertThat(jdbc.queryForList("select autor_id,eksponat_id from autorstvo order by autor_id,eksponat_id")).isEqualTo(before);
+        assertThat(jdbc.queryForObject("select count(*) from digitalni_sadrzaj",Integer.class)).isEqualTo(contents);
+        assertThat(jdbc.queryForObject("select count(*) from autor where (ime='Mila' and prezime='Jovanović') or (ime='Luka' and prezime='Petrović')",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from eksponat where inventarski_broj like 'DEMO-%'",Integer.class)).isGreaterThanOrEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(distinct p.izlozba_id) from ucesce_eksponata_na_izlozbi p join eksponat e on e.id=p.eksponat_id where e.inventarski_broj like 'DEMO-%'",Integer.class)).isGreaterThanOrEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from digitalni_sadrzaj where putanja='demo/pre-nego-sto-svane.mp3'",Integer.class)).isZero();
+    }
     @Test void everyLiveDemoExhibitionHasCompatibleScansRecommendationsAndRoute() throws Exception {
         seed.seed();seed.seed();
         String visitor=login(DemoDataSeeder.VISITOR_EMAIL),staff=login(DemoDataSeeder.STAFF_EMAIL);

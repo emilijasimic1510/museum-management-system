@@ -2,6 +2,10 @@ import { Routes } from '@angular/router';
 import { visitorGuard, cashierGuard } from './core/auth';
 import { demoBoardGuard } from './core/scan';
 export const routes:Routes=[
+  {path:'exhibits',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/exhibits').then(m=>m.ExhibitsPage)},
+  {path:'exhibits/:id',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/exhibit-detail').then(m=>m.ExhibitDetailPage)},
+  {path:'authors',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/authors').then(m=>m.AuthorsPage)},
+  {path:'authors/:id',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/author-detail').then(m=>m.AuthorDetailPage)},
   {path:'scan',canActivate:[visitorGuard],loadComponent:()=>import('./pages/scan').then(m=>m.ScanPage)},
   {path:'demo-qr',canActivate:[demoBoardGuard],loadComponent:()=>import('./pages/demo-qr-board').then(m=>m.DemoQrBoard)},
   {path:'',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/catalog').then(m=>m.CatalogPage)},

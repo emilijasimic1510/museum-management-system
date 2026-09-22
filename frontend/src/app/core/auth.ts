@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
-import { Api } from './api';
+import { Api, PUBLIC_CATALOG_REQUEST } from './api';
 import { Account, Registration, Token } from './models';
 
 const KEY='museum.session';
@@ -61,7 +61,7 @@ export const visitorGuard:CanActivateFn=async(route,state)=>{
 export const authInterceptor:HttpInterceptorFn=(request,next)=> {
   const auth=inject(Auth); const router=inject(Router);
   const apiRequest=request.url.startsWith('/api/');
-  const anonymous=request.url.startsWith('/api/auth/');
+  const anonymous=request.url.startsWith('/api/auth/') || request.context.get(PUBLIC_CATALOG_REQUEST);
   const token=apiRequest&&!anonymous?auth.token():null;
   return next(token?request.clone({setHeaders:{Authorization:`Bearer ${token}`}}):request).pipe(catchError((error:unknown)=> {
     if(error instanceof HttpErrorResponse && error.status===401 && token) {
