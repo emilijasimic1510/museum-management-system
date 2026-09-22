@@ -6,7 +6,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class MuseumBackendApplicationTests {
+class MuseumBackendApplicationTests extends rs.ac.uns.ftn.museum.support.PostgresTestBase {
     @Test
     void contextLoads() {
     }

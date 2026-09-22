@@ -23,3 +23,10 @@ spring:
 
 server:
   port: ${BACKEND_PORT:8081}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+    import: classpath:local-server.yml
