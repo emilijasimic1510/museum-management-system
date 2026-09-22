@@ -15,6 +15,12 @@ public final class ApiSecurity {
                 .authorizeHttpRequests(auth -> {
                     if (local) auth.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/health").permitAll();
+                    if(local) {
+                        auth.requestMatchers("/api/local-demo/board").hasAnyRole("CASHIER","CURATOR","GUIDE","ADMINISTRATOR");
+                        auth.requestMatchers("/api/local-demo/visits/**").hasRole("VISITOR");
+                        auth.requestMatchers("/api/local-demo/enabled").authenticated();
+                    }
+                    auth.requestMatchers("/api/local-demo/**").denyAll();
                     auth.requestMatchers(HttpMethod.POST,"/api/auth/register","/api/auth/login").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/prices").permitAll();
                     auth.requestMatchers("/api/cashier/**").hasRole("CASHIER");

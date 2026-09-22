@@ -32,7 +32,8 @@ export class AuthPage extends PageState {
         this.registered.set(true);
       }
       await this.auth.login(this.email.trim(),this.password); this.password='';
-      await this.router.navigateByUrl(safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl')));
+      const returnUrl=this.route.snapshot.queryParamMap.get('returnUrl');
+      await this.router.navigateByUrl(returnUrl ? safeReturnUrl(returnUrl) : (await this.auth.hasRole('CASHIER') ? '/cashier' : '/profile'));
     });
   }
 }

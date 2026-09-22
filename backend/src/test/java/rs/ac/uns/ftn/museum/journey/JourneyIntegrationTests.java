@@ -114,6 +114,8 @@ class JourneyIntegrationTests extends PostgresTestBase {
     @Test void validationIsSingleUseEvenConcurrentlyAndRequiresCashier() throws Exception {
         Fixture f=fixture(2);User owner=user(),cashier=user("CASHIER");
         JsonNode ticket=buy(f,owner);
+        assertThat(ticket.get("status").asText()).isEqualTo("KUPLJENA");
+        assertThat(call(get("/api/tickets/"+ticket.get("id").asLong()+"/payments"),owner,null,200).get(0).get("status").asText()).isEqualTo("USPESNA");
         Map<String,Object> body=Map.of("qrToken",ticket.get("qrToken").asText(),"termId",f.term());
         call(post("/api/cashier/validate"),owner,body,403);
         call(post("/api/cashier/validate"),cashier,Map.of("qrToken",ticket.get("qrToken").asText(),"termId",Long.MAX_VALUE),409);
@@ -121,6 +123,7 @@ class JourneyIntegrationTests extends PostgresTestBase {
                 .containsExactlyInAnyOrder(201,409);
         call(post("/api/tickets/"+ticket.get("id").asLong()+"/cancel"),owner,null,409);
         assertThat(jdbc.queryForObject("select count(*) from poseta where ulaznica_id=?",Integer.class,ticket.get("id").asLong())).isEqualTo(1);
+        assertThat(call(get("/api/tickets/"+ticket.get("id").asLong()),cashier,null,200).get("status").asText()).isEqualTo("AKTIVNA");
     }
     @Test void cashierCanSellAnonymousTicketWithoutInventingVisitor() throws Exception {
         Fixture f=fixture(2);User cashier=user("CASHIER"),visitor=user();
@@ -168,6 +171,34 @@ class JourneyIntegrationTests extends PostgresTestBase {
         JsonNode route=call(post("/api/visits/"+visit+"/routes"),owner,Map.of("criterion","BLIZINA"),201);
         assertThat(route.get("items").size()).isEqualTo(1);
         assertThatThrownBy(()->jdbc.update("insert into skeniranje_eksponata(poseta_id,ucesce_id,vreme_skeniranja) values (?,?,now())",visit,foreign.first())).isInstanceOf(RuntimeException.class);
+    }
+    @Test void scanReturnsContextAndNextAndRepeatedScanDoesNotRestoreVisitedCandidates() throws Exception {
+        Fixture f=fixture(3);User owner=user(),cashier=user("CASHIER");
+        long visit=enter(f,cashier,buy(f,owner));
+        jdbc.update("update ucesce_eksponata_na_izlozbi set kontekstualni_opis='Context for this installation' where id_ucesca=?",f.first());
+        jdbc.update("insert into digitalni_sadrzaj(ucesce_id,tip_sadrzaja,putanja,verzija,generisan_automatski,datum_kreiranja) values (?,'TEKST','/content/example.txt',1,false,now())",f.first());
+        JsonNode full=call(post("/api/visits/"+visit+"/routes"),owner,Map.of("criterion","KOMBINACIJA"),201);
+        assertThat(full.get("items").size()).isEqualTo(2);
+        for(int i=0;i<2;i++) {
+            JsonNode scan=call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),201);
+            assertThat(scan.get("participation").get("name").asText()).isEqualTo("First");
+            assertThat(scan.get("participation").get("contextDescription").asText()).isEqualTo("Context for this installation");
+            assertThat(scan.get("participation").get("content").size()).isEqualTo(1);
+            assertThat(scan.get("next").get(0).get("participationId").asLong()).isEqualTo(f.second());
+            assertThat(scan.toString()).doesNotContain(f.firstQr());
+        }
+        assertThat(call(get("/api/visits/"+visit+"/scans"),owner,null,200).size()).isEqualTo(2);
+        JsonNode remaining=call(post("/api/visits/"+visit+"/routes"),owner,Map.of("criterion","KOMBINACIJA"),201);
+        assertThat(remaining.get("items").size()).isEqualTo(1);
+        call(post("/api/visits/"+visit+"/scans"),null,Map.of("qrToken",f.firstQr()),401);
+        call(post("/api/visits/"+Long.MAX_VALUE+"/scans"),owner,Map.of("qrToken",f.firstQr()),404);
+        call(post("/api/visits/"+visit+"/finish"),owner,null,200);
+        call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),409);
+    }
+    @Test void demoEndpointsAreNotAvailableOutsideLocalProfile() throws Exception {
+        User staff=user("CASHIER"),owner=user();
+        call(get("/api/local-demo/board"),staff,null,403);
+        call(get("/api/local-demo/enabled"),owner,null,403);
     }
     @Test void consentControlsGraphUseAndMissingGraphFallsBack() throws Exception {
         Fixture f=fixture(2);User owner=user(),cashier=user("CASHIER");

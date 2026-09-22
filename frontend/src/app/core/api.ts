@@ -13,7 +13,7 @@ export function errorMessage(error:unknown):string {
   if (!(error instanceof HttpErrorResponse)) return 'Zahtev nije uspeo. Pokušajte ponovo.';
   const details=error.error;
   const fields: string[]=Array.isArray(details?.errors) ? details.errors.map((e:{field:string;message:string})=>`${e.field}: ${e.message}`) : [];
-  const fallback:Record<number,string>={0:'Backend nije dostupan. Proverite da li je pokrenut na portu 8081.',400:'Proverite unete podatke.',401:'Prijava nije važeća ili su email i lozinka netačni. Prijavite se ponovo.',403:'Vaš nalog nema pravo pristupa ovoj radnji.',404:'Traženi podatak nije pronađen.',409:'Radnja nije moguća zbog trenutnog stanja podataka.'};
+  const fallback:Record<number,string>={0:'Backend nije dostupan. Proverite da li je pokrenut na portu 8081.',400:'Proverite unete podatke.',401:'Prijava nije važeća ili su email i lozinka netačni. Prijavite se ponovo.',403:'Vaš nalog nema pravo pristupa ovoj radnji.',404:'Traženi podatak nije pronađen.',409:'Ulaznica nije validna, već je iskorišćena, istekla je ili ne pripada izabranom terminu.'};
   return [details?.detail || fallback[error.status] || `Greška servera (${error.status}). Pokušajte ponovo.`,...fields].join('\n');
 }
 export class PageState {

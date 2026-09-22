@@ -46,8 +46,14 @@ public class DemoDataSeeder implements ApplicationRunner {
         Instant demoDay = now.plus(Duration.ofDays(2)).truncatedTo(java.time.temporal.ChronoUnit.DAYS);
         ensureTerm(exhibition, demoDay.plus(Duration.ofHours(10)), 40);
         ensureTerm(exhibition, demoDay.plus(Duration.ofHours(15)), 40);
+        // A live slot is kept available for the cashier demo: buy now, validate now.
+        ensureLiveDemoTerm(exhibition, now, 40);
         ensurePrice(exhibition, "ODRASLI", new BigDecimal("8.00"));
         ensurePrice(exhibition, "STUDENT", new BigDecimal("5.00"));
+        Long eveningExhibition = ensureExhibition(hallB, "Veče skulpture", "Skulpture i materijali u dijalogu.", now);
+        ensureLiveDemoTerm(eveningExhibition, now, 30);
+        ensurePrice(eveningExhibition, "ODRASLI", new BigDecimal("6.00"));
+        ensurePrice(eveningExhibition, "STUDENT", new BigDecimal("4.00"));
         Long author = ensureAuthor("Mila", "Jovanović");
         Long exhibit1 = ensureExhibit("Tišina u plavom", "2024", "SLIKA", "Ulje na platnu", "Srbija", "Dnevnik svetlosti.", "DEMO-EX-001");
         Long exhibit2 = ensureExhibit("Dodir prostora", "2023", "SKULPTURA", "Drvo i metal", "Vojvodina", "Materijal kao sećanje.", "DEMO-EX-002");
@@ -59,6 +65,31 @@ public class DemoDataSeeder implements ApplicationRunner {
         ensureContent("DEMO-QR-001", "TEKST", "demo/tišina-u-plavom.txt");
         ensureContent("DEMO-QR-002", "TEKST", "demo/dodir-prostora.txt");
         ensureContent("DEMO-QR-003", "AUDIO", "demo/pre-nego-sto-svane.mp3");
+        Long sculpture1=ensureExhibit("Krug u bronzi", "2023", "SKULPTURA", "Bronza", "Srbija", "Odnos pune forme i praznog prostora.", "DEMO-SC-001");
+        Long sculpture2=ensureExhibit("Ritam kamena", "2024", "SKULPTURA", "Kamen", "Srbija", "Ponavljanje oblika i promena perspektive.", "DEMO-SC-002");
+        Long sculpture3=ensureExhibit("Linija u pokretu", "2025", "SKULPTURA", "Metal", "Srbija", "Svetlost i senka u pokretu posetioca.", "DEMO-SC-003");
+        ensureAuthorship(author,sculpture1);ensureAuthorship(author,sculpture2);ensureAuthorship(author,sculpture3);
+        ensureParticipation(eveningExhibition,sculpture1,1,"DEMO-SCULPTURE-QR-001","Počnite obilazak odnosom bronzane forme i praznine.");
+        ensureParticipation(eveningExhibition,sculpture2,2,"DEMO-SCULPTURE-QR-002","Uporedite teksturu kamena sa prethodnom bronzanom formom.");
+        ensureParticipation(eveningExhibition,sculpture3,3,"DEMO-SCULPTURE-QR-003","Završite obilazak posmatranjem senke iz različitih uglova.");
+        ensureContent("DEMO-SCULPTURE-QR-001","TEKST","demo/krug-u-bronzi.txt");
+        ensureContent("DEMO-SCULPTURE-QR-002","TEKST","demo/ritam-kamena.txt");
+        ensureContent("DEMO-SCULPTURE-QR-003","TEKST","demo/linija-u-pokretu.txt");
+        Long photoHall=ensureHall(museum,"Galerija gradskih priča",3,100);
+        Long photoExhibition=ensureExhibition(photoHall,"Grad kroz objektiv","Tri pogleda na grad: jutro, reka i noć.",now);
+        ensureLiveDemoTerm(photoExhibition,now,60);
+        ensurePrice(photoExhibition,"ODRASLI",new BigDecimal("7.00"));
+        ensurePrice(photoExhibition,"STUDENT",new BigDecimal("4.00"));
+        String[] photoNames={"Jutro na trgu","Odraz na Dunavu","Noćna svetla"};
+        String[] photoContexts={"Počnite obilazak svetlom jutra na gradskom trgu.","Uporedite arhitekturu grada sa njenim odrazom na reci.","Završite obilazak kontrastima svetla i senke posle zalaska sunca."};
+        for(int index=0;index<photoNames.length;index++) {
+            String suffix=String.format("%03d",index+1);
+            String qr="DEMO-CITY-QR-"+suffix;
+            Long photo=ensureExhibit(photoNames[index],"2026","FOTOGRAFIJA","Digitalna fotografija","Novi Sad",photoContexts[index],"DEMO-CITY-EX-"+suffix);
+            ensureAuthorship(author,photo);
+            ensureParticipation(photoExhibition,photo,index+1,qr,photoContexts[index]);
+            ensureContent(qr,"TEKST","demo/grad-"+suffix+".txt");
+        }
         Long visitorAccount = ensureAccount(VISITOR_EMAIL, "Demo", "Posetilac", "0600000001", true, "VISITOR", null);
         Long staffAccount = ensureAccount(STAFF_EMAIL, "Demo", "Zaposleni", "0600000002", false, "CASHIER", museum);
         ensureRole(staffAccount, "GUIDE");
@@ -78,6 +109,16 @@ public class DemoDataSeeder implements ApplicationRunner {
         jdbc.update("insert into sala(muzej_id,naziv,povrsina,sprat,kapacitet) values(?,?,?,?,?)",museum,name,250.0,floor,capacity); return id("select id from sala where muzej_id=? and naziv=?",museum,name);
     }
     private void ensureTerm(Long exhibition, Instant start, int capacity) { if(id("select id from termin_izlozbe where izlozba_id=? and pocetak=?",exhibition,ts(start))==null) jdbc.update("insert into termin_izlozbe(izlozba_id,pocetak,kraj,kapacitet,status) values(?,?,?,?,'OTVOREN')",exhibition,ts(start),ts(start.plus(Duration.ofHours(2))),capacity); }
+    private void ensureLiveDemoTerm(Long exhibition, Instant now, int capacity) {
+        Long active=id("select id from termin_izlozbe where izlozba_id=? and pocetak<=? and kraj>? and status='OTVOREN'",exhibition,ts(now),ts(now));
+        if(active==null) jdbc.update("insert into termin_izlozbe(izlozba_id,pocetak,kraj,kapacitet,status) values(?,?,?,?,'OTVOREN')",exhibition,ts(now.minus(Duration.ofMinutes(5))),ts(now.plus(Duration.ofHours(2))),capacity);
+    }
+    private Long ensureExhibition(Long hall, String name, String description, Instant now) {
+        Long existing=id("select id from izlozba where naziv=?",name);
+        if(existing!=null)return existing;
+        jdbc.update("insert into izlozba(sala_id,naziv,opis,datum_pocetka,datum_zavrsetka,status,online_vidljiva) values(?,?,?,?,?,'AKTIVNA',true)",hall,name,description,ts(now.minus(Duration.ofDays(1))),ts(now.plus(Duration.ofDays(180))));
+        return id("select id from izlozba where naziv=?",name);
+    }
     private void ensurePrice(Long exhibition,String category,BigDecimal price) { if(id("select izlozba_id from cenovnik_izlozbe where izlozba_id=? and kategorija=?",exhibition,category)==null) jdbc.update("insert into cenovnik_izlozbe(izlozba_id,datum_vazenja_od,kategorija,datum_vazenja_do,cena,napomena) values(?,?,?,null,?,?)",exhibition,ts(Instant.now().minusSeconds(60)),category,price,"Demo cenovnik"); }
     private Long ensureAuthor(String first,String last) { Long x=id("select id from autor where ime=? and prezime=?",first,last);if(x!=null)return x;jdbc.update("insert into autor(ime,prezime,godina_rodjenja,biografija) values(?,?,?,?)",first,last,1988,"Demo autor lokalne zbirke.");return id("select id from autor where ime=? and prezime=?",first,last); }
     private Long ensureExhibit(String name,String year,String type,String material,String origin,String description,String inventory) { Long x=id("select id from eksponat where inventarski_broj=?",inventory);if(x!=null)return x;jdbc.update("insert into eksponat(naziv,godina_nastanka,tip,materijal,poreklo,opis,inventarski_broj) values(?,?,?,?,?,?,?)",name,year,type,material,origin,description,inventory);return id("select id from eksponat where inventarski_broj=?",inventory); }

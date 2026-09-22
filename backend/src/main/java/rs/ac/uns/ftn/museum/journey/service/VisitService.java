@@ -126,6 +126,11 @@ public class VisitService {
         routes.findByVisitIdOrderByIdDesc(visit.getId()).forEach(r->r.setStatus(VisitStatus.ZAVRSENA));
     }
     private ScanResponse scanDto(ExhibitScan s,List<Recommendation> next) {
-        return new ScanResponse(s.getId(),s.getVisit().getId(),s.getParticipation().getId(),s.getScannedAt(),s.getDurationSeconds(),next);
+        var p=s.getParticipation();
+        var media=em.createQuery("select d from DigitalContent d where d.participation.id=:id order by d.version desc,d.id",DigitalContent.class)
+            .setParameter("id",p.getId()).getResultList().stream()
+            .map(d->new ContentResponse(d.getId(),d.getType().name(),d.getPath(),d.getLanguage(),d.getVersion())).toList();
+        return new ScanResponse(s.getId(),s.getVisit().getId(),p.getId(),s.getScannedAt(),s.getDurationSeconds(),next,
+            new ParticipationContent(p.getId(),p.getExhibit().getName(),p.getContextDescription(),media));
     }
 }

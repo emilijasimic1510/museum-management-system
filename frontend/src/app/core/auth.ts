@@ -23,11 +23,21 @@ export class Auth {
     const s={token:result.accessToken,expiresAt:Date.now()+result.expiresIn*1000};
     sessionStorage.setItem(KEY,JSON.stringify(s)); this.session.set(s);
   }
+  async account():Promise<Account> { return this.api.get<Account>('/accounts/me'); }
+  async hasRole(role:string):Promise<boolean> {
+    try { return (await this.account()).roles.some(value=>String(value)===role || String(value)==='ROLE_'+role); }
+    catch { return false; }
+  }
   register(data:Registration) { return this.api.post<Account>('/auth/register',data); }
   clear() { sessionStorage.removeItem(KEY); this.session.set(null); }
   logout() { this.clear(); void this.router.navigateByUrl('/'); }
 }
 export const authGuard:CanActivateFn=(_,state)=>inject(Auth).token()?true:inject(Router).createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
+export const cashierGuard:CanActivateFn=async(_,state)=>{
+  const auth=inject(Auth), router=inject(Router);
+  if(!auth.token()) return router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
+  return await auth.hasRole('CASHIER') ? true : router.createUrlTree(['/']);
+};
 export const authInterceptor:HttpInterceptorFn=(request,next)=> {
   const auth=inject(Auth); const router=inject(Router);
   const apiRequest=request.url.startsWith('/api/');

@@ -25,7 +25,7 @@ public final class JourneyDtos {
             PaymentStatus status, String externalReference, Instant createdAt) {}
     public record VisitResponse(Long id, Long ticketId, Instant enteredAt, Instant exitedAt, VisitStatus status) {}
     public record ScanResponse(Long id, Long visitId, Long participationId, Instant scannedAt, Integer durationSeconds,
-            List<Recommendation> next) {}
+            List<Recommendation> next, ParticipationContent participation) {}
     public record RatingResponse(Long id, Long visitId, Integer rating, String comment, Instant ratedAt) {}
     public record Recommendation(Long participationId, Long exhibitId, String name, String explanation) {}
     public record RouteItemResponse(Integer position, Long participationId, String explanation, Boolean visited) {}
