@@ -317,3 +317,72 @@ Subsequent grants use POST `/api/admin/accounts/{id}/roles/{roleId}`.
 An administrator who needs to manage events must also receive GUIDE.
 Employee subtypes and application roles remain independent.
 No administrator was automatically created in the development database.
+
+## Subsystem 3: ticket sales visits and recommendations
+
+V3 adds sales and visitor journey support without changing V1 or V2. The
+database migration is
+`backend/src/main/resources/db/migration/V3__create_sales_visits_recommendations_subsystem.sql`.
+It creates `ulaznica`, `transakcija`, `poseta`, `skeniranje_eksponata`,
+`ocena_izlozbe`, `preporucena_ruta` and `stavka_rute`. The complete mapping,
+constraints, cardinalities, routes and automation rules are in
+`database/relational-model-subsystem-3.md`.
+
+Online purchases use the authenticated visitor and card payment. Cashier sales
+may be anonymous and use card, cash or another configured method. The local and
+test profiles use a deterministic demonstration payment adapter; production
+profiles return service unavailable until a real payment adapter is configured.
+Ticket capacity is protected by a row lock in the service and deferred
+PostgreSQL constraints. QR tokens are random and contain no personal data.
+
+Validation opens a visit only once, for the requested term and current time.
+The visitor can finish the visit, scan available exhibition participations,
+read their digital content, rate a finished visit once and generate a non-empty
+route. Recommendation output uses Neo4j as a rebuildable anonymous projection;
+PostgreSQL curator order is the fallback when consent is absent or Neo4j is
+unavailable. Scheduled maintenance updates expired ticket, term, exhibition,
+visit and route statuses every 60 seconds; graph synchronization retries on the
+same interval.
+
+The backend tests use Testcontainers PostgreSQL and an isolated Neo4j container.
+Run the full suite with JDK 21, a process environment `JWT_SECRET` of at least
+32 bytes, and:
+
+```powershell
+cd backend
+.\mvnw.cmd clean test
+```
+
+The current implementation intentionally does not add payment processing,
+fiscalization, QR image rendering, TTS, frontend changes or new Neo4j-only
+business tables.
+
+## Local Swagger / OpenAPI
+
+Springdoc OpenAPI 2.8.17 documents all `/api/**` controller operations and DTOs.
+With the `local` profile, open http://127.0.0.1:8081/swagger-ui/index.html.
+The JSON specification is at `/v3/api-docs`, YAML at `/v3/api-docs.yaml`.
+Documentation is disabled in other profiles. The local server binds to loopback;
+existing business route authentication and role checks are unchanged.
+
+```powershell
+docker compose up -d
+cd backend
+$env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+# For a temporary local session; use the configured secret for persistent tokens.
+$env:JWT_SECRET=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
+```
+
+Use **Try it out**, then **Execute** for individual operations. Email is the
+login identifier: POST `/api/auth/login` accepts `email` and `password`.
+Copy the returned access token into **Authorize → bearerAuth** (without the
+`Bearer` prefix). Swagger adds the authorization header; the account must have
+the role required by the selected operation. Tokens are not persisted by the UI.
+Never paste real credentials into shared screenshots or exported examples.
+
+The OpenAPI integration tests compare the specification against every registered
+API controller mapping and verify anonymous documentation access while protected
+business routes still return 401. Run `./mvnw.cmd clean test` from `backend` with
+Docker available and `JWT_SECRET` set as above.

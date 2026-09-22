@@ -24,6 +24,12 @@ spring:
 server:
   port: ${BACKEND_PORT:8081}
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 ---
 spring:
   config:

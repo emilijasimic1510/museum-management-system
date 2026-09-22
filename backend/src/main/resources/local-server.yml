@@ -1,2 +1,11 @@
 server:
   address: 127.0.0.1
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    persist-authorization: false
+  paths-to-match: /api/**

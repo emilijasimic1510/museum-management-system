@@ -13,8 +13,15 @@ public final class ApiSecurity {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(c -> c.disable())
                 .authorizeHttpRequests(auth -> {
+                    if (local) auth.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/health").permitAll();
                     auth.requestMatchers(HttpMethod.POST,"/api/auth/register","/api/auth/login").permitAll();
+                    auth.requestMatchers(HttpMethod.GET,"/api/prices").permitAll();
+                    auth.requestMatchers("/api/cashier/**").hasRole("CASHIER");
+                    auth.requestMatchers("/api/tickets/me").hasRole("VISITOR");
+                    auth.requestMatchers(HttpMethod.POST,"/api/tickets").hasRole("VISITOR");
+                    auth.requestMatchers("/api/tickets/**").hasAnyRole("VISITOR","CASHIER");
+                    auth.requestMatchers("/api/visits/**","/api/recommendations/**").hasRole("VISITOR");
                     if (local) auth.requestMatchers("/api/museums","/api/museums/*","/api/halls","/api/halls/*","/api/exhibitions","/api/exhibitions/*","/api/exhibition-terms","/api/exhibition-terms/*").permitAll();
                     auth.requestMatchers("/api/admin/**","/api/employees/**").hasRole("ADMINISTRATOR");
                     auth.requestMatchers("/api/accounts/me").authenticated();

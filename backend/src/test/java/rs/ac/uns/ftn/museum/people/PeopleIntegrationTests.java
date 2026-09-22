@@ -78,9 +78,9 @@ class PeopleIntegrationTests extends PostgresTestBase {
                 "hiredOn", "2026-01-01", "type", type.name()));
     }
     @Test void migrationsMappingsAndEmailOnlySchema() {
-        assertThat(jdbc.queryForList("select version from flyway_schema_history where success order by installed_rank", String.class)).containsExactly("1","2");
-        assertThat(em.getMetamodel().getEntities()).hasSize(24);
-        assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_schema='public' and table_name<>'flyway_schema_history'", Integer.class)).isEqualTo(24);
+        assertThat(jdbc.queryForList("select version from flyway_schema_history where success and version in ('1','2') order by installed_rank", String.class)).containsExactly("1","2");
+        assertThat(em.getMetamodel().getEntities().stream().filter(e->!e.getJavaType().getPackageName().contains(".journey."))).hasSize(24);
+        assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_schema='public' and table_name not in ('flyway_schema_history','ulaznica','transakcija','poseta','skeniranje_eksponata','ocena_izlozbe','preporucena_ruta','stavka_rute')", Integer.class)).isEqualTo(24);
         assertThat(jdbc.queryForList("select column_name from information_schema.columns where table_name='korisnicki_nalog'", String.class))
                 .containsExactlyInAnyOrder("id","email","lozinka_hash","aktivan","datum_registracije","poslednja_prijava");
     }
