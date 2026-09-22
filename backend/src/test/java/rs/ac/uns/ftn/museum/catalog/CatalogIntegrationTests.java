@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,18 +17,26 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import rs.ac.uns.ftn.museum.catalog.domain.*;
-import rs.ac.uns.ftn.museum.support.PostgresTestBase;
+import rs.ac.uns.ftn.museum.support.CatalogAuthTestBase;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(print=MockMvcPrint.NONE)
 @ActiveProfiles({"test", "local"})
-class CatalogIntegrationTests extends PostgresTestBase {
+class CatalogIntegrationTests extends CatalogAuthTestBase {
+    private String adminToken;
+    @BeforeEach void authorizeWrites() { adminToken=tokenFor("ADMINISTRATOR"); }
+    private MockHttpServletRequestBuilder post(String url) { return MockMvcRequestBuilders.post(url).header("Authorization","Bearer "+adminToken); }
+    private MockHttpServletRequestBuilder put(String url) { return MockMvcRequestBuilders.put(url).header("Authorization","Bearer "+adminToken); }
+    private MockHttpServletRequestBuilder delete(String url) { return MockMvcRequestBuilders.delete(url).header("Authorization","Bearer "+adminToken); }
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;

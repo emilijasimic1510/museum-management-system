@@ -8,5 +8,6 @@ import java.time.Instant;
 import rs.ac.uns.ftn.museum.catalog.domain.*;
 
 public interface AuthorshipRepository extends JpaRepository<Authorship, AuthorshipId> {
-
+    @EntityGraph(attributePaths = {"author"})
+    List<Authorship> findByExhibitIdOrderByAuthorId(Long exhibitId);
 }

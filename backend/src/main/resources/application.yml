@@ -24,6 +24,12 @@ spring:
 server:
   port: ${BACKEND_PORT:8081}
 
+# PostgreSQL constraint details can contain submitted QR tokens. API errors are
+# translated to generic ProblemDetail responses by ApiExceptionHandler.
+logging:
+  level:
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: "OFF"
+
 springdoc:
   api-docs:
     enabled: false

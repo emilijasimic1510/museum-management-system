@@ -10,6 +10,7 @@ import rs.ac.uns.ftn.museum.catalog.dto.*;
 import rs.ac.uns.ftn.museum.catalog.repository.*;
 import rs.ac.uns.ftn.museum.catalog.mapper.CatalogMapper;
 import rs.ac.uns.ftn.museum.catalog.exception.*;
+import rs.ac.uns.ftn.museum.people.security.CurrentUser;
 
 @Service
 @Transactional
@@ -21,9 +22,15 @@ public class ExhibitionService {
         this.exhibitions = exhibitions; this.halls = halls; this.terms = terms;
     }
     @Transactional(readOnly = true)
-    public List<ExhibitionResponse> list() { return exhibitions.findAll(Sort.by("id")).stream().map(this::response).toList(); }
+    public List<ExhibitionResponse> list() { return exhibitions.findAll(Sort.by("id")).stream()
+            .filter(e -> staff() || Boolean.TRUE.equals(e.getOnlineVisible())).map(this::response).toList(); }
     @Transactional(readOnly = true)
-    public ExhibitionResponse get(Long id) { return response(require(id)); }
+    public ExhibitionResponse get(Long id) {
+        Exhibition e=require(id);
+        if (!staff() && !Boolean.TRUE.equals(e.getOnlineVisible())) throw new NotFoundException("Exhibition not found");
+        return response(e);
+    }
+    private boolean staff() { return CurrentUser.hasRole("CURATOR") || CurrentUser.hasRole("ADMINISTRATOR"); }
     public ExhibitionResponse create(ExhibitionCreateRequest r) {
         ScheduleRules.interval(r.start(), r.end());
         if (r.terms() == null || r.terms().isEmpty()) throw new InvalidRequestException("At least one initial term is required");

@@ -8,5 +8,5 @@ import java.time.Instant;
 import rs.ac.uns.ftn.museum.catalog.domain.*;
 
 public interface DigitalContentRepository extends JpaRepository<DigitalContent, Long> {
-
+    List<DigitalContent> findByParticipationIdOrderByVersionDescId(Long participationId);
 }

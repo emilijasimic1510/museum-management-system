@@ -30,14 +30,17 @@ public class OpenApiConfiguration {
     @Bean
     OpenApiCustomizer publicLocalOperations() {
         Set<String> publicGets = Set.of("/api/health", "/api/prices", "/api/events", "/api/events/{id}",
-                "/api/interests", "/api/interests/{id}");
+                "/api/interests", "/api/interests/{id}",
+                "/api/exhibits", "/api/exhibits/{id}", "/api/authors", "/api/authors/{id}",
+                "/api/exhibits/{id}/authorships", "/api/exhibits/{id}/participations",
+                "/api/exhibitions/{id}/participations");
         return api -> api.getPaths().forEach((path, item) -> {
             if (publicGets.contains(path) && item.getGet() != null) item.getGet().setSecurity(List.of());
             if ((path.equals("/api/auth/login") || path.equals("/api/auth/register")) && item.getPost() != null)
                 item.getPost().setSecurity(List.of());
-            // These catalog endpoints are already public in the existing local security profile.
-            if (path.matches("/api/(museums|halls|exhibitions|exhibition-terms)(/[^/]+)?"))
-                item.readOperations().forEach(operation -> operation.setSecurity(List.of()));
+            // Public reads are the same in every profile; writes still require a JWT and a staff role.
+            if (path.matches("/api/(museums|halls|exhibitions|exhibition-terms)(/[^/]+)?") && item.getGet()!=null)
+                item.getGet().setSecurity(List.of());
         });
     }
 }

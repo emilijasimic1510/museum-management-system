@@ -9,10 +9,12 @@ mvnw.cmd clean test
 mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-The `local` profile exposes catalog CRUD on localhost only. The default profile
-keeps all routes except GET `/api/health` protected. No JWT or users are implemented.
+Catalog GET endpoints are public in both profiles. Catalog writes require the
+appropriate staff role; `local` does not bypass write authorization. Authentication
+uses JWT and current account roles. See [CATALOG_API.md](CATALOG_API.md) for the
+exhibit, author, participation and digital-content API and its access rules.
 
-Flyway V1 creates subsystem 1. Hibernate validates it, never creates/updates it.
+Flyway V1–V3 create the approved schema. Hibernate validates it, never creates/updates it.
 Tests use an isolated PostgreSQL Testcontainers database, not the development DB.
 See the root README for API examples, configuration and complete run instructions.
 

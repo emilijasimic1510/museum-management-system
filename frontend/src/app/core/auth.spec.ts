@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router, RouterStateSnapshot, ActivatedRouteSnapshot } from '@angular/router';
-import { Auth, authGuard, authInterceptor, safeReturnUrl } from './auth';
+import { Auth, authGuard, authInterceptor, safeReturnUrl, visitorGuard, cashierGuard } from './auth';
 import { errorMessage } from './api';
 
 describe('Visitor session and backend boundary',()=>{
@@ -37,5 +37,27 @@ describe('Visitor session and backend boundary',()=>{
   });
   it('logout removes stored token',async()=>{await login();vi.spyOn(TestBed.inject(Router),'navigateByUrl').mockResolvedValue(true);auth.logout();expect(sessionStorage.getItem('museum.session')).toBeNull();expect(auth.token()).toBeNull();});
   it('keeps return URLs within the application',()=>{expect(safeReturnUrl('//example.test')).toBe('/profile');expect(safeReturnUrl('/\\example.test')).toBe('/profile');expect(safeReturnUrl('/exhibitions/12')).toBe('/exhibitions/12');});
-  it('preserves field validation details from backend ProblemDetail',()=>{expect(errorMessage(new HttpErrorResponse({status:400,error:{detail:'Request validation failed',errors:[{field:'email',message:'must be valid'}]}}))).toContain('email: must be valid');});
+  it('shows Serbian validation text without echoing backend input',()=>{expect(errorMessage(new HttpErrorResponse({status:400,error:{detail:'Request validation failed',errors:[{field:'email',message:'must be valid'}]}}))).toBe('Proverite unete podatke.');});
+});
+
+
+describe('Role routing',()=>{
+  beforeEach(()=>{sessionStorage.clear();TestBed.configureTestingModule({providers:[provideRouter([]),provideHttpClient(),provideHttpClientTesting()]});});
+  afterEach(()=>sessionStorage.clear());
+  const state={url:'/tickets'} as RouterStateSnapshot;
+  const route={} as ActivatedRouteSnapshot;
+  async function check(role:string,guard:typeof visitorGuard){
+    const auth=TestBed.inject(Auth);auth.session.set({token:'test-only',expiresAt:Date.now()+60000});
+    auth.currentAccount.set({id:1,email:'test@example.test',roles:[role],active:true,registeredAt:'',lastLogin:null});
+    return await TestBed.runInInjectionContext(()=>guard(route,state));
+  }
+  it('blocks visitor access to cashier',async()=>{const result=await check('VISITOR',cashierGuard);expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe('/');});
+  it('blocks cashier access to visitor pages',async()=>{const result=await check('ROLE_CASHIER',visitorGuard);expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe('/cashier');});
+  it('allows the matching role',async()=>{expect(await check('VISITOR',visitorGuard)).toBe(true);expect(await check('CASHIER',cashierGuard)).toBe(true);});
+  it('restores a valid session on refresh and resolves roles from API',async()=>{
+    sessionStorage.setItem('museum.session',JSON.stringify({token:'test-only',expiresAt:Date.now()+60000}));
+    const result=TestBed.runInInjectionContext(()=>visitorGuard(route,state));
+    TestBed.inject(HttpTestingController).expectOne('/api/accounts/me').flush({roles:['VISITOR']});
+    expect(await result).toBe(true);expect(TestBed.inject(Auth).isVisitor()).toBe(true);
+  });
 });

@@ -37,6 +37,10 @@ class OpenApiIntegrationTests extends PostgresTestBase {
                                 .as("%s %s is documented", method, path).isTrue())));
         assertThat(spec.at("/components/securitySchemes/bearerAuth/scheme").asText()).isEqualTo("bearer");
         assertThat(spec.path("paths").path("/api/auth/login").path("post").path("security").isEmpty()).isTrue();
+        assertThat(spec.path("paths").path("/api/exhibits").path("get").path("security").isEmpty()).isTrue();
+        // An absent operation override inherits the global bearer requirement.
+        assertThat(spec.path("paths").path("/api/exhibits").path("post").has("security")).isFalse();
+        assertThat(spec.path("paths").path("/api/museums").path("post").has("security")).isFalse();
     }
 
     @Test

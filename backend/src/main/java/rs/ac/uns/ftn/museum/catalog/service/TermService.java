@@ -10,6 +10,7 @@ import rs.ac.uns.ftn.museum.catalog.dto.*;
 import rs.ac.uns.ftn.museum.catalog.repository.*;
 import rs.ac.uns.ftn.museum.catalog.mapper.CatalogMapper;
 import rs.ac.uns.ftn.museum.catalog.exception.*;
+import rs.ac.uns.ftn.museum.people.security.CurrentUser;
 
 @Service
 @Transactional
@@ -18,9 +19,17 @@ public class TermService {
     private final ExhibitionRepository exhibitions;
     public TermService(ExhibitionTermRepository terms, ExhibitionRepository exhibitions) { this.terms = terms; this.exhibitions = exhibitions; }
     @Transactional(readOnly = true)
-    public List<TermResponse> list() { return terms.findAll(Sort.by("id")).stream().map(CatalogMapper::term).toList(); }
+    public List<TermResponse> list() { return terms.findAll(Sort.by("id")).stream()
+            .filter(t -> visible(t.getExhibition())).map(CatalogMapper::term).toList(); }
     @Transactional(readOnly = true)
-    public TermResponse get(Long id) { return CatalogMapper.term(require(id)); }
+    public TermResponse get(Long id) {
+        ExhibitionTerm t=require(id);
+        if (!visible(t.getExhibition())) throw new NotFoundException("Exhibition term not found");
+        return CatalogMapper.term(t);
+    }
+    private boolean visible(Exhibition e) {
+        return CurrentUser.hasRole("CURATOR") || CurrentUser.hasRole("ADMINISTRATOR") || Boolean.TRUE.equals(e.getOnlineVisible());
+    }
     public TermResponse create(TermRequest r) {
         Exhibition e = lock(r.exhibitionId());
         ScheduleRules.term(r.start(), r.end(), r.capacity(), e.getStart(), e.getEnd());

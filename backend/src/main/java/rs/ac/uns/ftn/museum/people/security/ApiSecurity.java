@@ -28,7 +28,14 @@ public final class ApiSecurity {
                     auth.requestMatchers(HttpMethod.POST,"/api/tickets").hasRole("VISITOR");
                     auth.requestMatchers("/api/tickets/**").hasAnyRole("VISITOR","CASHIER");
                     auth.requestMatchers("/api/visits/**","/api/recommendations/**").hasRole("VISITOR");
-                    if (local) auth.requestMatchers("/api/museums","/api/museums/*","/api/halls","/api/halls/*","/api/exhibitions","/api/exhibitions/*","/api/exhibition-terms","/api/exhibition-terms/*").permitAll();
+                    auth.requestMatchers(HttpMethod.GET,
+                            "/api/museums", "/api/museums/*", "/api/halls", "/api/halls/*",
+                            "/api/exhibitions", "/api/exhibitions/*", "/api/exhibition-terms", "/api/exhibition-terms/*",
+                            "/api/exhibits", "/api/exhibits/*", "/api/authors", "/api/authors/*",
+                            "/api/exhibits/*/authorships", "/api/exhibits/*/participations",
+                            "/api/exhibitions/*/participations").permitAll();
+                    auth.requestMatchers("/api/exhibits/**", "/api/authors/**", "/api/exhibit-participations/**",
+                            "/api/digital-content/**").hasAnyRole("CURATOR", "ADMINISTRATOR");
                     auth.requestMatchers("/api/admin/**","/api/employees/**").hasRole("ADMINISTRATOR");
                     auth.requestMatchers("/api/accounts/me").authenticated();
                     auth.requestMatchers("/api/visitors/me","/api/visitors/me/**").hasRole("VISITOR");

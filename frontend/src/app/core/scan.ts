@@ -29,6 +29,7 @@ export const demoBoardGuard:CanActivateFn=async(_,state)=>{
   if(!auth.token())return router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
   try {
     const account=await auth.account();
+    if(auth.isCashier())return router.createUrlTree(['/cashier']);
     return account.roles.some(r=>['CASHIER','CURATOR','GUIDE','ADMINISTRATOR'].includes(r)) && await demo.enabled()
       ? true : router.createUrlTree(['/']);
   }catch{return router.createUrlTree(['/']);}
