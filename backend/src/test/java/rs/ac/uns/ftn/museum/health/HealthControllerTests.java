@@ -16,6 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 @ActiveProfiles("test")
 class HealthControllerTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    rs.ac.uns.ftn.museum.people.security.CurrentAccountJwtConverter jwtConverter;
     @Autowired
     private MockMvc mockMvc;
 

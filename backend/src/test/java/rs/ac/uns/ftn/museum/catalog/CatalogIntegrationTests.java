@@ -55,8 +55,8 @@ class CatalogIntegrationTests extends PostgresTestBase {
 
     @Test void migrationAndHibernateValidateRealPostgres() {
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where version='1' and success", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_schema='public' and table_name <> 'flyway_schema_history'", Integer.class)).isEqualTo(10);
-        assertThat(em.getMetamodel().getEntities()).hasSize(10);
+        assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_schema='public' and table_name in ('muzej','sala','izlozba','termin_izlozbe','eksponat','autor','autorstvo','ucesce_eksponata_na_izlozbi','digitalni_sadrzaj','cenovnik_izlozbe')", Integer.class)).isEqualTo(10);
+        assertThat(em.getMetamodel().getEntities().stream().filter(e -> e.getJavaType().getPackageName().endsWith(".catalog.domain"))).hasSize(10);
     }
 
     @Test void fullCrudForAllFourResources() throws Exception {

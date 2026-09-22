@@ -8,4 +8,6 @@ import rs.ac.uns.ftn.museum.people.domain.*;
 public record TokenResponse(
         String accessToken,
         String tokenType,
-        long expiresIn) {}
+        long expiresIn) {
+    @Override public String toString() { return "TokenResponse[token redacted]"; }
+}

@@ -22,9 +22,9 @@ public final class ApiSecurity {
                     auth.requestMatchers("/api/visitors/**").hasRole("ADMINISTRATOR");
                     auth.requestMatchers(HttpMethod.POST,"/api/events/*/registrations").hasRole("VISITOR");
                     auth.requestMatchers(HttpMethod.DELETE,"/api/events/*/registrations/me").hasRole("VISITOR");
-                    auth.requestMatchers("/api/events/*/registrations","/api/events/*/registrations/*").hasAnyRole("GUIDE","CURATOR","ADMINISTRATOR");
+                    auth.requestMatchers("/api/events/*/registrations","/api/events/*/registrations/*").hasRole("GUIDE");
                     auth.requestMatchers(HttpMethod.GET,"/api/events","/api/events/*","/api/interests","/api/interests/*").permitAll();
-                    auth.requestMatchers("/api/events/**").hasAnyRole("GUIDE","CURATOR","ADMINISTRATOR");
+                    auth.requestMatchers("/api/events/**").hasRole("GUIDE");
                     auth.requestMatchers("/api/interests/**").hasAnyRole("CURATOR","ADMINISTRATOR");
                     auth.requestMatchers("/api/exhibitions/**","/api/exhibition-terms/**").hasAnyRole("CURATOR","ADMINISTRATOR");
                     auth.requestMatchers("/api/museums/**","/api/halls/**").hasRole("ADMINISTRATOR");

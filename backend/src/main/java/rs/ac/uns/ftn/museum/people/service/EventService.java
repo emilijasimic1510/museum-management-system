@@ -31,7 +31,7 @@ public class EventService {
     public EventResponse update(Long id,EventRequest r) {
         Event e=lock(id);canManage(e);long count=count(id);
         if(r.capacity()<count)throw new ConflictException("Capacity is below occupied places");
-        apply(e,r);canManage(e);return response(e);
+        apply(e,r);canManage(e);refreshCapacityStatus(e);return response(e);
     }
     public void delete(Long id) { Event e=lock(id);canManage(e);events.delete(e);events.flush(); }
     public RegistrationResponse register(Long eventId) {
@@ -65,9 +65,8 @@ public class EventService {
         if(e.getStatus()==EventStatus.PLANIRAN || e.getStatus()==EventStatus.POPUNJEN) e.setStatus(count(e.getId())>=e.getCapacity()?EventStatus.POPUNJEN:EventStatus.PLANIRAN);
     }
     private void canManage(Event e) {
-        if(CurrentUser.hasRole("ADMINISTRATOR") || CurrentUser.hasRole("CURATOR"))return;
-        if(CurrentUser.hasRole("GUIDE") && e.getGuide()!=null && e.getGuide().getAccount().getId().equals(CurrentUser.id()))return;
-        throw new AccessDeniedException("Only the assigned guide may manage this event");
+        if(CurrentUser.hasRole("GUIDE"))return;
+        throw new AccessDeniedException("Guide role required to manage events");
     }
     private void apply(Event e,EventRequest r) {
         if(!r.end().isAfter(r.start()))throw new InvalidRequestException("Event end must be after start");

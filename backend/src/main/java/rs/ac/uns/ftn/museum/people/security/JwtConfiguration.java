@@ -6,7 +6,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.*;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.core.*;
@@ -17,8 +16,8 @@ import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 public class JwtConfiguration {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean Clock clock() { return Clock.systemUTC(); }
-    @Bean SecretKey jwtKey(Environment environment) {
-        String value=environment.getProperty("JWT_SECRET");
+    @Bean SecretKey jwtKey() {
+        String value=System.getenv("JWT_SECRET");
         if (value==null || value.getBytes(StandardCharsets.UTF_8).length<32) {
             throw new IllegalStateException("JWT_SECRET must be supplied and contain at least 32 UTF-8 bytes");
         }
