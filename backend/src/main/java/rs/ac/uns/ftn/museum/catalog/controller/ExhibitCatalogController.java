@@ -36,7 +36,10 @@ public class ExhibitCatalogController {
     @PutMapping("/authors/{id}") public AuthorResponse updateAuthor(@PathVariable Long id, @Valid @RequestBody AuthorRequest request) { return service.updateAuthor(id,request); }
     @DeleteMapping("/authors/{id}") public ResponseEntity<Void> deleteAuthor(@PathVariable Long id) { service.deleteAuthor(id); return ResponseEntity.noContent().build(); }
 
-    @GetMapping("/exhibit-participations") public List<ManagedParticipationResponse> managedParticipations(@RequestParam Long exhibitionId) { return service.managedParticipations(exhibitionId); }
+    @GetMapping("/exhibit-participations") public List<ManagedParticipationResponse> managedParticipations(@RequestParam(required=false) Long exhibitionId) { return service.managedParticipations(exhibitionId); }
+    @GetMapping("/exhibits/{id}/authorships/management") public List<ManagedAuthorshipResponse> managedAuthorships(@PathVariable Long id) { return service.managedAuthorships(id); }
+    @PutMapping("/exhibits/{id}/authorships/{authorId}") public ManagedAuthorshipResponse saveAuthorship(@PathVariable Long id, @PathVariable Long authorId, @Valid @RequestBody AuthorshipRequest request) { return service.saveAuthorship(id,authorId,request); }
+    @DeleteMapping("/exhibits/{id}/authorships/{authorId}") public ResponseEntity<Void> deleteAuthorship(@PathVariable Long id, @PathVariable Long authorId) { service.deleteAuthorship(id,authorId); return ResponseEntity.noContent().build(); }
     @GetMapping("/exhibit-participations/{id}") public ManagedParticipationResponse managedParticipation(@PathVariable Long id) { return service.managedParticipation(id); }
     @PostMapping("/exhibit-participations") public ResponseEntity<ManagedParticipationResponse> createParticipation(@Valid @RequestBody ParticipationRequest request) {
         var result=service.createParticipation(request);

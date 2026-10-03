@@ -93,6 +93,7 @@ public class VisitService {
     @Transactional(readOnly=true) public List<Recommendation> next(Long id) {
         Visit visit=own(id,false);active(visit);return recommendations.recommend(visit,RouteCriterion.KOMBINACIJA).stream().limit(1).toList();
     }
+    @Transactional(readOnly=true) public void requireActiveOwner(Long id) { active(own(id,false)); }
     @Transactional(readOnly=true) public ParticipationContent content(Long id,Long participationId) {
         Visit visit=own(id,false);active(visit);
         ExhibitParticipation p=em.find(ExhibitParticipation.class,participationId);
@@ -102,10 +103,28 @@ public class VisitService {
                 || (p.getInstalledAt()!=null && now.isBefore(p.getInstalledAt()))
                 || (p.getRemovedAt()!=null && !now.isBefore(p.getRemovedAt())))
             throw new ConflictException("Participation is unavailable in this exhibition");
+        if(!scans.existsByVisitIdAndParticipationId(id,participationId))
+            throw new AccessDeniedException("Scan this participation during this visit to unlock content");
         var content=em.createQuery("select d from DigitalContent d where d.participation.id=:id order by d.version desc,d.id",DigitalContent.class)
                 .setParameter("id",participationId).getResultList().stream()
-                .map(d->new ContentResponse(d.getId(),d.getType().name(),d.getPath(),d.getLanguage(),d.getVersion())).toList();
+                .map(d->new ContentResponse(d.getId(),d.getType().name(),rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion())).toList();
         return new ParticipationContent(p.getId(),p.getExhibit().getName(),p.getContextDescription(),content);
+    }
+    @Transactional(readOnly=true) public List<ContentAccess> exhibitContent(Long exhibitId) {
+        List<Visit> current=visits.findByTicketVisitorAccountIdOrderByIdDesc(CurrentUser.id()).stream()
+            .filter(v->{try{active(v);return true;}catch(ConflictException unavailable){return false;}}).toList();
+        List<ExhibitParticipation> entries=em.createQuery("select p from ExhibitParticipation p where p.exhibit.id=:id and p.exhibition.onlineVisible=true order by p.id",ExhibitParticipation.class)
+            .setParameter("id",exhibitId).getResultList();
+        Instant now=clock.instant();
+        return entries.stream().map(p->{
+            Visit visit=current.stream().filter(v->v.getTicket().getTerm().getExhibition().getId().equals(p.getExhibition().getId()))
+                .filter(v->(p.getInstalledAt()==null || !now.isBefore(p.getInstalledAt())) && (p.getRemovedAt()==null || now.isBefore(p.getRemovedAt())))
+                .sorted(Comparator.comparing(v->!scans.existsByVisitIdAndParticipationId(v.getId(),p.getId())))
+                .findFirst().orElse(null);
+            boolean unlocked=visit!=null && scans.existsByVisitIdAndParticipationId(visit.getId(),p.getId());
+            return new ContentAccess(p.getId(),p.getExhibition().getId(),p.getExhibition().getName(),visit==null?null:visit.getId(),
+                visit==null?"NO_ACTIVE_VISIT":unlocked?"UNLOCKED":"SCAN_REQUIRED",unlocked?content(visit.getId(),p.getId()):null);
+        }).toList();
     }
     private Visit own(Long id,boolean lock) {
         Visit visit=(lock?visits.lock(id):visits.findById(id)).orElseThrow(()->new NotFoundException("Visit not found"));
@@ -127,10 +146,9 @@ public class VisitService {
     }
     private ScanResponse scanDto(ExhibitScan s,List<Recommendation> next) {
         var p=s.getParticipation();
-        var media=em.createQuery("select d from DigitalContent d where d.participation.id=:id order by d.version desc,d.id",DigitalContent.class)
-            .setParameter("id",p.getId()).getResultList().stream()
-            .map(d->new ContentResponse(d.getId(),d.getType().name(),d.getPath(),d.getLanguage(),d.getVersion())).toList();
-        return new ScanResponse(s.getId(),s.getVisit().getId(),p.getId(),s.getScannedAt(),s.getDurationSeconds(),next,
-            new ParticipationContent(p.getId(),p.getExhibit().getName(),p.getContextDescription(),media));
+        ParticipationContent unlocked;
+        try { unlocked=content(s.getVisit().getId(),p.getId()); }
+        catch(ConflictException unavailable) { unlocked=new ParticipationContent(p.getId(),p.getExhibit().getName(),null,List.of()); }
+        return new ScanResponse(s.getId(),s.getVisit().getId(),p.getId(),s.getScannedAt(),s.getDurationSeconds(),next,unlocked);
     }
 }

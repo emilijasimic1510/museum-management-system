@@ -10,6 +10,6 @@ import rs.ac.uns.ftn.museum.catalog.domain.*;
 public record HallRequest(
         @NotNull Long museumId,
         @NotBlank String name,
-        BigDecimal area,
+        @Positive BigDecimal area,
         Integer floor,
-        Integer capacity) {}
+        @Positive Integer capacity) {}

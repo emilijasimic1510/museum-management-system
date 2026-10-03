@@ -23,6 +23,8 @@ public final class ApiSecurity {
                     auth.requestMatchers("/api/local-demo/**").denyAll();
                     auth.requestMatchers(HttpMethod.POST,"/api/auth/register","/api/auth/login").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/prices").permitAll();
+                    auth.requestMatchers("/api/curator/**").hasRole("CURATOR");
+                    auth.requestMatchers("/api/manager/**").hasRole("MANAGER");
                     auth.requestMatchers("/api/cashier/**").hasRole("CASHIER");
                     auth.requestMatchers("/api/tickets/me").hasRole("VISITOR");
                     auth.requestMatchers(HttpMethod.POST,"/api/tickets").hasRole("VISITOR");
@@ -38,6 +40,8 @@ public final class ApiSecurity {
                             "/api/digital-content/**").hasAnyRole("CURATOR", "ADMINISTRATOR");
                     auth.requestMatchers("/api/admin/**","/api/employees/**").hasRole("ADMINISTRATOR");
                     auth.requestMatchers("/api/accounts/me").authenticated();
+                    auth.requestMatchers(HttpMethod.GET,"/api/guides/me").hasRole("GUIDE");
+                    auth.requestMatchers("/api/guides/**").denyAll();
                     auth.requestMatchers("/api/visitors/me","/api/visitors/me/**").hasRole("VISITOR");
                     auth.requestMatchers("/api/visitors/**").hasRole("ADMINISTRATOR");
                     auth.requestMatchers(HttpMethod.POST,"/api/events/*/registrations").hasRole("VISITOR");

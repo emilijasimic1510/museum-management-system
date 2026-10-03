@@ -31,7 +31,7 @@ public class EventController {
     @DeleteMapping("/{id}/registrations/me") public ResponseEntity<Void> cancel(@PathVariable Long id) {
         service.cancel(id); return ResponseEntity.noContent().build();
     }
-    @GetMapping("/{id}/registrations") public List<RegistrationResponse> registrations(@PathVariable Long id) { return service.registrations(id); }
+    @GetMapping("/{id}/registrations") public List<ManagedRegistrationResponse> registrations(@PathVariable Long id) { return service.registrations(id); }
     @PutMapping("/{id}/registrations/{visitorId}") public RegistrationResponse updateRegistration(
             @PathVariable Long id, @PathVariable Long visitorId, @Valid @RequestBody RegistrationUpdateRequest request) {
         return service.updateRegistration(id, visitorId, request);

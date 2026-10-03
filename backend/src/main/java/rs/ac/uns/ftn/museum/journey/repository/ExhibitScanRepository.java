@@ -7,5 +7,6 @@ import org.springframework.data.repository.query.Param;
 import rs.ac.uns.ftn.museum.journey.domain.*;
 
 public interface ExhibitScanRepository extends JpaRepository<ExhibitScan,Long> {
+    boolean existsByVisitIdAndParticipationId(Long visitId,Long participationId);
     List<ExhibitScan> findByVisitIdOrderByScannedAtAscIdAsc(Long id);
 }

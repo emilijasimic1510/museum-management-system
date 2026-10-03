@@ -23,7 +23,8 @@ public final class JourneyDtos {
     }
     public record PaymentResponse(Long id, Long ticketId, BigDecimal amount, PaymentMethod method,
             PaymentStatus status, String externalReference, Instant createdAt) {}
-    public record VisitResponse(Long id, Long ticketId, Instant enteredAt, Instant exitedAt, VisitStatus status) {}
+    public record VisitResponse(Long id, Long ticketId, Instant enteredAt, Instant exitedAt, VisitStatus status,
+            Long exhibitionId, String exhibitionName) {}
     public record ScanResponse(Long id, Long visitId, Long participationId, Instant scannedAt, Integer durationSeconds,
             List<Recommendation> next, ParticipationContent participation) {}
     public record RatingResponse(Long id, Long visitId, Integer rating, String comment, Instant ratedAt) {}
@@ -35,4 +36,6 @@ public final class JourneyDtos {
     public record ExhibitionRecommendation(Long exhibitionId,String name,Instant start,Instant end,String explanation) {}
     public record ContentResponse(Long id,String type,String path,String language,Integer version) {}
     public record ParticipationContent(Long participationId,String name,String contextDescription,List<ContentResponse> content) {}
+    public record ContentAccess(Long participationId,Long exhibitionId,String exhibitionName,Long visitId,
+            String state,ParticipationContent participation) {}
 }

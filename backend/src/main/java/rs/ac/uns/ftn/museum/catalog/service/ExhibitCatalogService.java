@@ -57,11 +57,32 @@ public class ExhibitCatalogService {
     }
     @Transactional(readOnly=true)
     public List<ManagedParticipationResponse> managedParticipations(Long exhibitionId) {
+        if (exhibitionId==null) return participations.findAll(Sort.by("id")).stream().map(this::managedParticipation).toList();
         requireExhibition(exhibitionId);
         return participations.findByExhibitionIdOrderById(exhibitionId).stream().map(this::managedParticipation).toList();
     }
     @Transactional(readOnly=true)
     public ManagedParticipationResponse managedParticipation(Long id) { return managedParticipation(requireParticipation(id)); }
+
+    @Transactional(readOnly=true)
+    public List<ManagedAuthorshipResponse> managedAuthorships(Long exhibitId) {
+        requireExhibit(exhibitId);
+        return authorships.findByExhibitIdOrderByAuthorId(exhibitId).stream()
+                .map(a->new ManagedAuthorshipResponse(a.getAuthor().getId(),exhibitId,a.getContributionType(),a.getNote())).toList();
+    }
+    public ManagedAuthorshipResponse saveAuthorship(Long exhibitId, Long authorId, AuthorshipRequest r) {
+        Exhibit exhibit=requireExhibit(exhibitId); Author author=requireAuthor(authorId);
+        AuthorshipId key=new AuthorshipId(authorId,exhibitId);
+        Authorship a=authorships.findById(key).orElseGet(()->{
+            Authorship created=new Authorship(); created.setId(key); created.setAuthor(author); created.setExhibit(exhibit); return created;
+        });
+        a.setContributionType(r.contributionType()); a.setNote(r.note()); authorships.saveAndFlush(a);
+        return new ManagedAuthorshipResponse(authorId,exhibitId,a.getContributionType(),a.getNote());
+    }
+    public void deleteAuthorship(Long exhibitId, Long authorId) {
+        Authorship a=authorships.findById(new AuthorshipId(authorId,exhibitId)).orElseThrow(()->new NotFoundException("Authorship not found"));
+        authorships.delete(a); authorships.flush();
+    }
 
     public ManagedExhibitResponse createExhibit(ExhibitRequest r) {
         Exhibit e=new Exhibit(); apply(e,r); return managedExhibit(exhibits.saveAndFlush(e));
@@ -102,13 +123,15 @@ public class ExhibitCatalogService {
     @Transactional(readOnly=true)
     public DigitalContentResponse content(Long id) { return content(requireContent(id)); }
     public DigitalContentResponse createContent(DigitalContentRequest r) {
-        DigitalContent d=new DigitalContent(); d.setParticipation(requireParticipation(r.participationId()));
+        DigitalContent d=new DigitalContent(); d.setParticipation(participations.findLockedById(r.participationId()).orElseThrow(()->new NotFoundException("Participation not found")));
         d.setCreatedAt(clock.instant()); apply(d,r); return content(contents.saveAndFlush(d));
     }
     public DigitalContentResponse updateContent(Long id, DigitalContentRequest r) {
         DigitalContent d=requireContent(id);
+        participations.findLockedById(d.getParticipation().getId()).orElseThrow(()->new NotFoundException("Participation not found"));
         if (!d.getParticipation().getId().equals(r.participationId()))
             throw new ConflictException("Content participation cannot be changed; create a new content entry");
+        if(d.getPath().startsWith(rs.ac.uns.ftn.museum.audio.AudioStorage.PREFIX))throw new InvalidRequestException("Generisani audio je nepromenljiv; generišite novu verziju.");
         apply(d,r); contents.flush(); return content(d);
     }
     public void deleteContent(Long id) { contents.delete(requireContent(id)); contents.flush(); }
@@ -131,14 +154,10 @@ public class ExhibitCatalogService {
     private void apply(ExhibitParticipation p, ParticipationRequest r) {
         if (r.installedAt()!=null && r.removedAt()!=null && !r.removedAt().isAfter(r.installedAt()))
             throw new InvalidRequestException("Removal must be after installation");
-        if (r.qrToken()!=null && (r.qrToken().isBlank() || r.qrToken().chars().anyMatch(Character::isWhitespace)))
-            throw new InvalidRequestException("QR token must be a nonempty value without whitespace");
         p.setInstalledAt(r.installedAt()); p.setRemovedAt(r.removedAt()); p.setPosition(r.position());
         p.setTourOrder(r.tourOrder()); p.setContextDescription(r.contextDescription());
-        if (r.qrToken()!=null) p.setQrToken(r.qrToken());
-        else if (p.getQrToken()==null) p.setQrToken(UUID.randomUUID().toString());
-        if (r.qrPath()!=null && !r.qrPath().isBlank()) validateReference(r.qrPath());
-        p.setQrPath(r.qrPath());
+        // QR identity belongs to the server. Updates never rotate tokens or overwrite stored QR paths.
+        if (p.getQrToken()==null) p.setQrToken(UUID.randomUUID().toString());
     }
     private void apply(DigitalContent d, DigitalContentRequest r) {
         validateReference(r.path());
@@ -158,7 +177,9 @@ public class ExhibitCatalogService {
     }
     private ExhibitResponse exhibit(Exhibit e) {
         return new ExhibitResponse(e.getId(),e.getName(),e.getCreationPeriod(),e.getType(),e.getMaterial(),e.getOrigin(),e.getDescription(),
-                authorships.findByExhibitIdOrderByAuthorId(e.getId()).stream().map(this::authorSummary).toList());
+                authorships.findByExhibitIdOrderByAuthorId(e.getId()).stream().map(this::authorSummary).toList(),
+                participations.findByExhibitIdAndExhibitionOnlineVisibleTrueOrderById(e.getId()).stream()
+                        .map(p->new CatalogReference(p.getExhibition().getId(),p.getExhibition().getName())).distinct().toList());
     }
     private ManagedExhibitResponse managedExhibit(Exhibit e) { return new ManagedExhibitResponse(exhibit(e),e.getInventoryNumber()); }
     private AuthorResponse author(Author a) { return new AuthorResponse(a.getId(),a.getFirstName(),a.getLastName(),a.getBirthYear(),a.getDeathYear(),a.getBiography()); }
@@ -174,6 +195,6 @@ public class ExhibitCatalogService {
                 p.getRemovedAt(),p.getPosition(),p.getTourOrder(),p.getContextDescription(),p.getQrToken(),p.getQrPath());
     }
     private DigitalContentResponse content(DigitalContent d) {
-        return new DigitalContentResponse(d.getId(),d.getParticipation().getId(),d.getType(),d.getPath(),d.getLanguage(),d.getVersion(),d.getAutomaticallyGenerated(),d.getCreatedAt());
+        return new DigitalContentResponse(d.getId(),d.getParticipation().getId(),d.getType(),rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion(),d.getAutomaticallyGenerated(),d.getCreatedAt());
     }
 }

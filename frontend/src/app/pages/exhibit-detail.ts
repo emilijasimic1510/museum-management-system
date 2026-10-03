@@ -5,8 +5,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Api } from '../core/api';
 import { CatalogExhibit, CatalogParticipation, CatalogResource, validCatalogId } from '../core/catalog';
 import { Feedback } from '../shared/feedback';
+import { VisitorContent } from '../shared/visitor-content';
 
-@Component({imports:[RouterLink,Feedback],template:`
+@Component({imports:[RouterLink,Feedback,VisitorContent],template:`
 <a class="back" routerLink="/exhibits">← Digitalni katalog</a>
 <app-feedback [busy]="resource.busy()" [error]="resource.error()" />
 @if(resource.notFound()){<section class="page-heading"><h1>Eksponat nije pronađen</h1><p>Proverite adresu ili izaberite drugi eksponat iz kataloga.</p></section>}
@@ -23,7 +24,7 @@ import { Feedback } from '../shared/feedback';
     </div>
   </section><aside>
     <section class="panel"><h2>Autori i autorstvo</h2>@for(a of e.authors;track a.id){<div class="route-block"><h3><a [routerLink]="['/authors',a.id]">{{a.name}}</a></h3>@if(a.contributionType){<p>{{a.contributionType}}</p>}</div>}@empty{<p class="empty-inline">Podaci o autorstvu još nisu dostupni.</p>}</section>
-    <section class="panel"><h2>Dodatni sadržaj</h2><p>Digitalni sadržaj nije dostupan u javnom katalogu. Dodatni sadržaj i personalizovane preporuke otključavaju se tokom aktivne posete muzeju.</p></section>
+    <app-visitor-content [exhibitId]="e.id" />
   </aside></div>
 }
 `})

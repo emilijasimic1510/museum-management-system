@@ -60,12 +60,16 @@ recommendation generation.
 - [x] Initial EER model
 - [x] Relational model for subsystems 1 and 2
 - [x] Spring Boot project setup
-- [ ] Angular project setup
+- [x] Angular project setup
 - [x] PostgreSQL migration for subsystem 1
 - [x] Authentication and authorization
 - [ ] Core functional verticals
-- [ ] Neo4j recommendation module
+- [x] Neo4j recommendation module
 - [ ] Testing and documentation
+
+Aktuelni pregled po modulima, rute, dozvole i rezultati nastavka rada:
+[izveštaj od 30.09.2026.](docs/continuation-2026-09-30.md).
+Manager analitika i poseban Administrator frontend još nisu implementirani.
 
 ## Running the project
 

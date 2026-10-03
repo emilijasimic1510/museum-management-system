@@ -10,6 +10,12 @@ import rs.ac.uns.ftn.museum.journey.domain.RouteCriterion;
 /** Rebuildable, anonymous projection; never sends account/visitor/visit/payment identifiers. */
 @Service
 public class GraphProjection {
+    // No queue: a stuck driver call must not accumulate request threads or tasks.
+    private final java.util.concurrent.ExecutorService reads=new java.util.concurrent.ThreadPoolExecutor(
+        0,1,30,java.util.concurrent.TimeUnit.SECONDS,new java.util.concurrent.SynchronousQueue<>(),
+        task->{Thread thread=new Thread(task,"recommendation-read");thread.setDaemon(true);return thread;});
+    @jakarta.annotation.PreDestroy
+    public void close() { reads.shutdownNow(); }
     private static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger(GraphProjection.class);
     private final Driver driver;
     private final JdbcTemplate jdbc;
@@ -59,6 +65,18 @@ public class GraphProjection {
     }
     public Map<Long,Double> scores(Long previous,List<Long> candidates,List<String> interests,RouteCriterion criterion) {
         if(candidates.isEmpty())return Map.of();
+        java.util.concurrent.Future<Map<Long,Double>> pending=null;
+        try {
+            pending=reads.submit(()->readScores(previous,candidates,interests,criterion));
+            return pending.get(2,java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();return Map.of();
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException | java.util.concurrent.RejectedExecutionException unavailable) {
+            LOG.warn("Neo4j recommendation unavailable within budget; using PostgreSQL ordering");
+            return Map.of();
+        } finally { if(pending!=null && !pending.isDone())pending.cancel(true); }
+    }
+    private Map<Long,Double> readScores(Long previous,List<Long> candidates,List<String> interests,RouteCriterion criterion) {
         try(Session session=driver.session()) {
             return session.executeRead(tx->{
                 Map<Long,Double> scores=new HashMap<>();

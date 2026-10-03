@@ -12,6 +12,7 @@ import rs.ac.uns.ftn.museum.journey.service.*;
 import rs.ac.uns.ftn.museum.journey.domain.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.awaitility.Awaitility.await;
 
 class GraphProjectionTests {
     @Test void realNeo4jProjectionIsIdempotentAndRanksAnonymousCatalog() {
@@ -29,15 +30,19 @@ class GraphProjectionTests {
                 when(jdbc.queryForList(contains("from autorstvo"))).thenReturn(List.of(Map.of("autor",7L,"eksponat",1L),Map.of("autor",7L,"eksponat",2L)));
                 when(jdbc.queryForList(contains("lag("))).thenReturn(List.of(Map.of("prethodni",1L,"naredni",2L,"broj",3L)));
                 GraphProjection graph=new GraphProjection(driver,jdbc);
+                try {
                 graph.synchronize();graph.synchronize();
-                assertThat(graph.scores(1L,List.of(2L),List.of("Slika")).get(2L)).isEqualTo(12d);
-                assertThat(graph.scores(1L,List.of(2L),List.of("Slika"),RouteCriterion.INTERESOVANJA).get(2L)).isEqualTo(5d);
-                assertThat(graph.scores(1L,List.of(2L),List.of("Slika"),RouteCriterion.POPULARNOST).get(2L)).isEqualTo(3d);
+                // A cold Neo4j query may exceed the production 2 s fallback budget.
+                // Retry bounded reads while the container warms up; keep exact score assertions.
+                await().atMost(Duration.ofSeconds(30)).untilAsserted(()->assertThat(graph.scores(1L,List.of(2L),List.of("Slika")).get(2L)).isEqualTo(12d));
+                await().atMost(Duration.ofSeconds(30)).untilAsserted(()->assertThat(graph.scores(1L,List.of(2L),List.of("Slika"),RouteCriterion.INTERESOVANJA).get(2L)).isEqualTo(5d));
+                await().atMost(Duration.ofSeconds(30)).untilAsserted(()->assertThat(graph.scores(1L,List.of(2L),List.of("Slika"),RouteCriterion.POPULARNOST).get(2L)).isEqualTo(3d));
                 try(Session session=driver.session()) {
                     assertThat(session.run("MATCH (n:Eksponat) RETURN count(n) AS count").single().get("count").asInt()).isEqualTo(2);
                     assertThat(session.run("MATCH ()-[r:CESTO_SLEDI]->() RETURN r.broj AS count").single().get("count").asLong()).isEqualTo(3);
                     assertThat(session.run("MATCH (n) WHERE n.email IS NOT NULL OR n.posetilacId IS NOT NULL OR n.lozinka_hash IS NOT NULL RETURN count(n) AS count").single().get("count").asInt()).isZero();
                 }
+                } finally { graph.close(); }
             }
         }
     }

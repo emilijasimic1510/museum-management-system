@@ -2,18 +2,27 @@
 
 `DemoDataSeeder` ubacuje podatke samo kada je aktivan Spring profil `local` ili
 `development`. Ne menja V1, V2 ili V3 migraciju, ne radi u `test`, staging ili
-production profilu i koristi BCrypt za obe demo lozinke. Ponovno pokretanje je
+production profilu i koristi BCrypt za demo lozinke. Ponovno pokretanje je
 bezbedno: prirodni ključevi demo zapisa i `ON CONFLICT DO NOTHING` sprečavaju
 duplikate.
 
 ## Demo nalozi
 
-Oba naloga koriste lozinku `MuseumDemo!2026` (u bazi je samo BCrypt hash):
+Demo nalozi koriste lozinku `MuseumDemo!2026` (u bazi je samo BCrypt hash):
 
 | Email | Uloge | Svrha |
 | --- | --- | --- |
 | `demo.visitor@museum.local` | `VISITOR` | prijava, kupovina, posete i preporuke |
 | `demo.staff@museum.local` | `CASHIER`, `GUIDE` | validacija ulaznice i događaji |
+| `demo.curator@museum.local` | `CURATOR` | katalog, autorstva, učešća i sadržaj; samo `local` |
+| `demo.guide@museum.local` | `GUIDE` | program i prijave; samo `local` |
+
+Curator i Guide imaju odgovarajući Employee zapis i podtip. Postojeći staff
+nalog zadržava obe uloge; frontend daje prednost blagajni. Za Guide ekran
+koristiti zaseban `demo.guide` nalog. Nema demo Manager ili Administrator naloga.
+Guide seed dodaje predavanje, radionicu sa jednom prijavom demo posetioca i
+otkazanu turu. Ponovni start ne menja datume/status/prijave postojećih događaja;
+za demonstraciju nakon isteka datuma vodič može kreirati novi događaj.
 
 Email je identifikator za prijavu. Podaci koriste lokalne, lažne email adrese i
 telefone.

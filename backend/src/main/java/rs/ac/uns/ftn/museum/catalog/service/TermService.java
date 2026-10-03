@@ -15,6 +15,7 @@ import rs.ac.uns.ftn.museum.people.security.CurrentUser;
 @Service
 @Transactional
 public class TermService {
+    @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager em;
     private final ExhibitionTermRepository terms;
     private final ExhibitionRepository exhibitions;
     public TermService(ExhibitionTermRepository terms, ExhibitionRepository exhibitions) { this.terms = terms; this.exhibitions = exhibitions; }
@@ -43,10 +44,19 @@ public class TermService {
         TreeSet<Long> ids = new TreeSet<>(List.of(previous, r.exhibitionId()));
         Map<Long, Exhibition> parents = new HashMap<>();
         for (Long parent : ids) parents.put(parent, lock(parent));
+        // Serialize with checkout before inspecting tickets or changing a sold term.
+        em.refresh(t, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        long tickets=em.createQuery("select count(t) from Ticket t where t.term.id=:id",Long.class).setParameter("id",id).getSingleResult();
+        if(tickets>0 && (!previous.equals(r.exhibitionId()) || !t.getStart().equals(r.start()) || !t.getEnd().equals(r.end())))
+            throw new ConflictException("A term with ticket history cannot change exhibition or dates");
+        long occupied=em.createQuery("select count(t) from Ticket t where t.term.id=:id and t.status<>rs.ac.uns.ftn.museum.journey.domain.TicketStatus.OTKAZANA",Long.class).setParameter("id",id).getSingleResult();
+        if(r.capacity()<occupied)throw new ConflictException("Capacity is below existing tickets");
         if (!previous.equals(r.exhibitionId())) ensureAnotherTerm(previous);
         Exhibition e = parents.get(r.exhibitionId());
         ScheduleRules.term(r.start(), r.end(), r.capacity(), e.getStart(), e.getEnd());
         CatalogMapper.apply(t, e, r.start(), r.end(), r.capacity(), r.status());
+        if(tickets>0 && (r.status()==TermStatus.OTVOREN || r.status()==TermStatus.POPUNJEN))
+            t.setStatus(occupied>=r.capacity()?TermStatus.POPUNJEN:TermStatus.OTVOREN);
         return CatalogMapper.term(t);
     }
     public void delete(Long id) {

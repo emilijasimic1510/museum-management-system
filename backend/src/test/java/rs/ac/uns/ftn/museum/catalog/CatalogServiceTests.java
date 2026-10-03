@@ -51,8 +51,9 @@ class CatalogServiceTests {
     @Test void rejectsNegativeCapacity() {
         assertThatThrownBy(() -> ScheduleRules.term(START, END, -1, START, END)).isInstanceOf(InvalidRequestException.class);
     }
-    @Test void acceptsZeroCapacityAndExactBoundaries() {
-        assertThatCode(() -> ScheduleRules.term(START, END, 0, START, END)).doesNotThrowAnyException();
+    @Test void acceptsPositiveCapacityAndExactBoundaries() {
+        assertThatCode(() -> ScheduleRules.term(START, END, 1, START, END)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> ScheduleRules.term(START, END, 0, START, END)).isInstanceOf(InvalidRequestException.class);
     }
     @Test void rejectsTermOutsideExhibition() {
         assertThatThrownBy(() -> ScheduleRules.term(START.minusSeconds(1), END, 1, START, END)).isInstanceOf(ConflictException.class);

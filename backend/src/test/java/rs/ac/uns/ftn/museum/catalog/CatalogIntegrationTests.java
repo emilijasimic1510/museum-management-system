@@ -84,9 +84,9 @@ class CatalogIntegrationTests extends CatalogAuthTestBase {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.floor").value(2));
         mvc.perform(put("/api/exhibitions/"+eid).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(exhibitionRequest(h,false))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.terms.length()").value(2));
-        Map<String,Object> updated = new HashMap<>(term(eid)); updated.put("capacity",0);
+        Map<String,Object> updated = new HashMap<>(term(eid)); updated.put("capacity",15);
         mvc.perform(put("/api/exhibition-terms/"+tid).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(updated)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.capacity").value(0));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.capacity").value(15));
         mvc.perform(delete("/api/museums/"+m)).andExpect(status().isConflict());
         mvc.perform(delete("/api/halls/"+h)).andExpect(status().isConflict());
         mvc.perform(delete("/api/exhibition-terms/"+tid)).andExpect(status().isNoContent());

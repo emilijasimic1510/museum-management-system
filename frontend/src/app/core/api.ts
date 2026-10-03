@@ -1,16 +1,18 @@
 import { HttpClient, HttpContext, HttpContextToken, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 
 export const PUBLIC_CATALOG_REQUEST=new HttpContextToken(()=>false);
 
 @Injectable({providedIn:'root'})
 export class Api {
   private http=inject(HttpClient);
-  get<T>(path:string) { return firstValueFrom(this.http.get<T>('/api'+path)); }
+  get<T>(path:string, wait?:number) { const request=this.http.get<T>('/api'+path); return firstValueFrom(wait===undefined?request:request.pipe(timeout(wait))); }
+  blob(path:string) { return firstValueFrom(this.http.get('/api'+path,{responseType:'blob'}).pipe(timeout(45000))); }
   publicGet<T>(path:string) { return firstValueFrom(this.http.get<T>('/api'+path,{context:new HttpContext().set(PUBLIC_CATALOG_REQUEST,true)})); }
-  post<T>(path:string, body:unknown) { return firstValueFrom(this.http.post<T>('/api'+path,body)); }
+  post<T>(path:string, body:unknown, wait?:number) { const request=this.http.post<T>('/api'+path,body); return firstValueFrom(wait===undefined?request:request.pipe(timeout(wait))); }
   put<T>(path:string, body:unknown) { return firstValueFrom(this.http.put<T>('/api'+path,body)); }
+  delete(path:string) { return firstValueFrom(this.http.delete<void>('/api'+path)); }
 }
 export function errorMessage(error:unknown):string {
   if (!(error instanceof HttpErrorResponse)) return 'Zahtev nije uspeo. Pokušajte ponovo.';

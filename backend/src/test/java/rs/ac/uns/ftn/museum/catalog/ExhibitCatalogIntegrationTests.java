@@ -59,6 +59,27 @@ class ExhibitCatalogIntegrationTests extends CatalogAuthTestBase {
         return Map.of("participationId",participation,"type","AUDIO","path","media/audio.mp3","language","sr","version",1,"automaticallyGenerated",false);
     }
 
+    @Test void publicExhibitListsDistinctVisibleExhibitionsAndSeparateContexts() throws Exception {
+        String curator=tokenFor("CURATOR"); long e=exhibit(curator);
+        assertThat(call(get("/api/exhibits/"+e),null,null,200).path("exhibitions")).isEmpty();
+        long first=exhibition(true), second=exhibition(true), hidden=exhibition(false);
+        for(long x:new long[]{first,first,second,hidden}) {
+            call(post("/api/exhibit-participations"),curator,
+                    Map.of("exhibitId",e,"exhibitionId",x,"contextDescription","Kontekst izložbe "+x),201);
+        }
+        JsonNode detail=call(get("/api/exhibits/"+e),null,null,200);
+        assertThat(detail.path("exhibitions").findValuesAsText("id")).containsExactly(""+first,""+second);
+        JsonNode list=call(get("/api/exhibits"),null,null,200);
+        JsonNode row=null; for(JsonNode item:list)if(item.path("id").asLong()==e)row=item;
+        assertThat(row).isEqualTo(detail);
+        assertThat(row.findValues("qrToken")).isEmpty();
+        assertThat(row.findValues("qrPath")).isEmpty();
+        assertThat(row.findValues("inventoryNumber")).isEmpty();
+        JsonNode entries=call(get("/api/exhibits/"+e+"/participations"),null,null,200);
+        assertThat(entries).hasSize(3);
+        assertThat(entries.get(0).path("contextDescription").asText()).isNotEqualTo(entries.get(2).path("contextDescription").asText());
+    }
+
     @Test void publicCatalogReadsUseSafeProjections() throws Exception {
         String curator=tokenFor("CURATOR"); long exhibit=exhibit(curator), exhibition=exhibition(true);
         long author=call(post("/api/authors"),curator,Map.of("firstName","Ana","lastName","Anić","biography","Biografija"),201).path("id").asLong();
@@ -83,6 +104,73 @@ class ExhibitCatalogIntegrationTests extends CatalogAuthTestBase {
             assertThat(p.path("exhibition").path("id").asLong()).isEqualTo(exhibition);
             assertThat(p.path("contextDescription").asText()).isEqualTo("Priča u ovoj izložbi");
         }
+    }
+
+    @ParameterizedTest @ValueSource(strings={"CURATOR","ADMINISTRATOR"})
+    void managementUsesCompositeAuthorshipKeyAndServerGeneratedQr(String role) throws Exception {
+        String token=tokenFor(role); long e=exhibit(token), x=exhibition(true);
+        long a=call(post("/api/authors"),token,Map.of("firstName","Novi autor"),201).path("id").asLong();
+        String link="/api/exhibits/"+e+"/authorships/"+a;
+        call(put(link),token,Map.of("contributionType","Koautor","note","Interna napomena"),200);
+        call(put(link),token,Map.of("contributionType","Autor","note","Izmenjena napomena"),200);
+        JsonNode links=call(get("/api/exhibits/"+e+"/authorships/management"),token,null,200);
+        assertThat(links.size()).isEqualTo(1);
+        assertThat(links.get(0).path("authorId").asLong()).isEqualTo(a);
+        assertThat(links.get(0).path("exhibitId").asLong()).isEqualTo(e);
+        assertThat(links.get(0).path("note").asText()).isEqualTo("Izmenjena napomena");
+        call(put("/api/exhibits/"+e+"/authorships/9223372036854775807"),token,Map.of(),404);
+        call(delete("/api/authors/"+a),token,null,409);
+        JsonNode p=call(post("/api/exhibit-participations"),token,Map.of("exhibitionId",x,"exhibitId",e),201);
+        JsonNode second=call(post("/api/exhibit-participations"),token,Map.of("exhibitionId",x,"exhibitId",e),201);
+        assertThat(!p.path("qrToken").asText().isBlank()).isTrue();
+        assertThat(!p.path("qrToken").asText().equals(second.path("qrToken").asText())).isTrue();
+        JsonNode updated=call(put("/api/exhibit-participations/"+p.path("id").asLong()),token,Map.of("exhibitionId",x,"exhibitId",e,"contextDescription","Izmenjeno"),200);
+        assertThat(updated.path("qrToken").asText().equals(p.path("qrToken").asText())).isTrue();
+        assertThat(call(get("/api/exhibit-participations"),token,null,200).isArray()).isTrue();
+        call(delete(link),token,null,204);
+        assertThat(call(get("/api/exhibits/"+e+"/authorships/management"),token,null,200).size()).isZero();
+        call(get("/api/authors/"+a),token,null,200);
+        call(get("/api/exhibits/"+e),token,null,200);
+        call(delete(link),token,null,404);
+    }
+
+    @Test void newManagementRoutesEnforceRoles() throws Exception {
+        for(String role:Arrays.asList(null,"VISITOR","CASHIER","GUIDE")) {
+            String token=role==null?null:tokenFor(role); int status=role==null?401:403;
+            call(get("/api/exhibit-participations"),token,null,status);
+            call(get("/api/exhibits/1/authorships/management"),token,null,status);
+            call(put("/api/exhibits/1/authorships/1"),token,Map.of(),status);
+            call(delete("/api/exhibits/1/authorships/1"),token,null,status);
+        }
+    }
+
+    @Test void extraJsonCannotOverwriteServerOwnedFields() throws Exception {
+        String token=tokenFor("CURATOR"); long e=exhibit(token),x=exhibition(true);
+        Map<String,Object> body=new HashMap<>(participationBody(e,x));
+        body.put("id",Long.MAX_VALUE); body.put("qrToken","client-supplied-value"); body.put("qrPath","client/path.png");
+        JsonNode created=call(post("/api/exhibit-participations"),token,body,201);
+        long id=created.path("id").asLong();
+        assertThat(id).isNotEqualTo(Long.MAX_VALUE);
+        assertThat(!created.path("qrToken").asText().equals("client-supplied-value")).isTrue();
+        assertThat(created.path("qrPath").isNull()).isTrue();
+        jdbc.update("update ucesce_eksponata_na_izlozbi set qr_putanja='server/path.png' where id_ucesca=?",id);
+        body.put("qrToken","replacement-value");
+        JsonNode updated=call(put("/api/exhibit-participations/"+id),token,body,200);
+        assertThat(updated.path("qrToken").asText().equals(created.path("qrToken").asText())).isTrue();
+        assertThat(updated.path("qrPath").asText().equals("server/path.png")).isTrue();
+        Map<String,Object> content=new HashMap<>(contentBody(id));
+        content.put("id",Long.MAX_VALUE);content.put("createdAt","1900-01-01T00:00:00Z");
+        JsonNode c=call(post("/api/digital-content"),token,content,201);
+        assertThat(c.path("id").asLong()).isNotEqualTo(Long.MAX_VALUE);
+        assertThat(c.path("createdAt").asText()).isNotEqualTo("1900-01-01T00:00:00Z");
+        JsonNode persisted=call(get("/api/digital-content/"+c.path("id").asLong()),token,null,200);
+        content.put("createdAt","1901-01-01T00:00:00Z");
+        JsonNode changed=call(put("/api/digital-content/"+c.path("id").asLong()),token,content,200);
+        assertThat(changed.path("createdAt")).isEqualTo(persisted.path("createdAt"));
+        assertThat(changed.path("participationId").asLong()).isEqualTo(id);
+        JsonNode publicExhibit=call(get("/api/exhibits/"+e),null,null,200);
+        assertThat(publicExhibit.findValues("qrToken")).isEmpty();
+        assertThat(publicExhibit.findValues("qrPath")).isEmpty();
     }
 
     @ParameterizedTest @ValueSource(strings={"VISITOR","CASHIER","GUIDE","MANAGER"})

@@ -39,7 +39,7 @@ public class EventService {
         EventRegistrationId id=new EventRegistrationId(v.getId(),eventId);
         EventRegistration r=registrations.findById(id).orElse(null);
         if (r!=null && r.getStatus()!=RegistrationStatus.OTKAZAN) throw new ConflictException("Already registered");
-        ensureOpen(e,count(eventId));
+        ensureRegistrationOpen(e,count(eventId));
         if(r==null) r=new EventRegistration();r.setId(id);r.setVisitor(v);r.setEvent(e);r.setRegisteredAt(clock.instant());r.setStatus(RegistrationStatus.PRIJAVLJEN);
         registrations.saveAndFlush(r);refreshCapacityStatus(e);return PeopleMapper.registration(r);
     }
@@ -49,17 +49,23 @@ public class EventService {
         if(r.getStatus()==RegistrationStatus.PRISUSTVOVAO)throw new ConflictException("Attendance history cannot be cancelled by visitor");
         r.setStatus(RegistrationStatus.OTKAZAN);registrations.flush();refreshCapacityStatus(e);
     }
-    @Transactional(readOnly=true) public List<RegistrationResponse> registrations(Long id) {
-        Event e=require(id);canManage(e);return registrations.findByEventId(id).stream().map(PeopleMapper::registration).toList();
+    @Transactional(readOnly=true) public List<ManagedRegistrationResponse> registrations(Long id) {
+        Event e=require(id);canManage(e);return registrations.findByEventId(id).stream()
+                .map(r -> new ManagedRegistrationResponse(r.getVisitor().getId(),id,r.getRegisteredAt(),
+                        r.getStatus(),r.getVisitor().getFirstName(),r.getVisitor().getLastName())).toList();
     }
     public RegistrationResponse updateRegistration(Long eventId,Long visitorId,RegistrationUpdateRequest request) {
         Event e=lock(eventId);canManage(e);
         EventRegistration r=registrations.findById(new EventRegistrationId(visitorId,eventId)).orElseThrow(() -> new NotFoundException("Registration not found"));
-        if(r.getStatus()==RegistrationStatus.OTKAZAN && request.status()!=RegistrationStatus.OTKAZAN) ensureOpen(e,count(eventId));
+        if(r.getStatus()==RegistrationStatus.OTKAZAN && request.status()!=RegistrationStatus.OTKAZAN) ensureRegistrationOpen(e,count(eventId));
         r.setStatus(request.status());registrations.flush();refreshCapacityStatus(e);return PeopleMapper.registration(r);
     }
     public static void ensureOpen(Event e,long occupied) {
         if(e.getStatus()!=EventStatus.PLANIRAN || occupied>=e.getCapacity())throw new ConflictException("Event is closed or full");
+    }
+    private void ensureRegistrationOpen(Event e,long occupied) {
+        ensureOpen(e,occupied);
+        if(!e.getStart().isAfter(clock.instant()))throw new ConflictException("Registration closes when the event starts");
     }
     private void refreshCapacityStatus(Event e) {
         if(e.getStatus()==EventStatus.PLANIRAN || e.getStatus()==EventStatus.POPUNJEN) e.setStatus(count(e.getId())>=e.getCapacity()?EventStatus.POPUNJEN:EventStatus.PLANIRAN);

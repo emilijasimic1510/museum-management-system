@@ -12,9 +12,9 @@ import { Feedback } from '../shared/feedback';
 @if(expired){<p class="message">Sesija je istekla. Prijavite se ponovo.</p>}
 @if(registered()){<p class="message success">Nalog je kreiran. Sada se prijavite.</p><a class="button" routerLink="/login">Na prijavu</a>}
 @else{<form #form="ngForm" (ngSubmit)="submit(form)">
-@if(registerMode){<div class="form-row"><label>Ime<input name="firstName" [(ngModel)]="firstName" required autocomplete="given-name" #first="ngModel">@if(first.invalid && (first.touched || form.submitted)){<small class="field-error">Unesite ime.</small>}</label><label>Prezime<input name="lastName" [(ngModel)]="lastName" required autocomplete="family-name" #last="ngModel">@if(last.invalid && (last.touched || form.submitted)){<small class="field-error">Unesite prezime.</small>}</label></div>}
-<label>Email<input name="email" type="email" [(ngModel)]="email" required email autocomplete="username" #mail="ngModel" placeholder="ime@primer.rs">@if(mail.invalid && (mail.touched || form.submitted)){<small class="field-error">Unesite ispravnu email adresu.</small>}</label>
-<label>Lozinka<input name="password" type="password" [(ngModel)]="password" required [minlength]="registerMode?12:1" [maxlength]="72" [autocomplete]="registerMode?'new-password':'current-password'" #pass="ngModel">@if(registerMode){<small>Od 12 do 72 karaktera.</small>}@if(pass.invalid && (pass.touched || form.submitted)){<small class="field-error">{{registerMode?'Lozinka mora imati najmanje 12 karaktera.':'Unesite lozinku.'}}</small>}</label>
+@if(registerMode){<div class="form-row"><label>Ime <span class="required-mark" aria-hidden="true">*</span><input name="firstName" [(ngModel)]="firstName" required autocomplete="given-name" #first="ngModel">@if(first.invalid && (first.touched || form.submitted)){<small class="field-error">Unesite ime.</small>}</label><label>Prezime <span class="required-mark" aria-hidden="true">*</span><input name="lastName" [(ngModel)]="lastName" required autocomplete="family-name" #last="ngModel">@if(last.invalid && (last.touched || form.submitted)){<small class="field-error">Unesite prezime.</small>}</label></div>}
+<label>Email <span class="required-mark" aria-hidden="true">*</span><input name="email" type="email" [(ngModel)]="email" required email autocomplete="username" #mail="ngModel" placeholder="ime@primer.rs">@if(mail.invalid && (mail.touched || form.submitted)){<small class="field-error">Unesite ispravnu email adresu.</small>}</label>
+<label>Lozinka <span class="required-mark" aria-hidden="true">*</span><input name="password" type="password" [(ngModel)]="password" required [minlength]="registerMode?12:1" [maxlength]="72" [autocomplete]="registerMode?'new-password':'current-password'" #pass="ngModel">@if(registerMode){<small>Od 12 do 72 karaktera.</small>}@if(pass.invalid && (pass.touched || form.submitted)){<small class="field-error">{{registerMode?'Lozinka mora imati najmanje 12 karaktera.':'Unesite lozinku.'}}</small>}</label>
 @if(registerMode){<label>Telefon <span class="muted">(opciono)</span><input name="phone" type="tel" [(ngModel)]="phone" autocomplete="tel"></label><label class="checkbox"><input name="consent" type="checkbox" [(ngModel)]="consent"><span>Želim personalizovane preporuke izložbi i eksponata.</span></label>}
 <button class="button full" type="submit" [disabled]="busy()">{{busy()?'Sačekajte…':registerMode?'Kreiraj nalog':'Prijavi se'}} <span aria-hidden="true">↗</span></button>
 </form>}
@@ -33,7 +33,8 @@ export class AuthPage extends PageState {
       }
       await this.auth.login(this.email.trim(),this.password); this.password='';
       const returnUrl=this.route.snapshot.queryParamMap.get('returnUrl');
-      await this.router.navigateByUrl(await this.auth.hasRole('CASHIER') ? '/cashier' : safeReturnUrl(returnUrl));
+      await this.auth.account();
+      await this.router.navigateByUrl(this.auth.isAdmin()?'/admin':this.auth.isCashier()?'/cashier':this.auth.isCurator()?'/curator':this.auth.isGuide()?'/guide':this.auth.isManager()?'/manager':safeReturnUrl(returnUrl));
     });
   }
 }

@@ -10,8 +10,8 @@ import { Feedback } from '../shared/feedback';
 <section class="page-heading"><h1>Skeniraj eksponat</h1><p>Izaberite aktivnu posetu izložbi u kojoj se nalazite.</p></section>
 <app-feedback [busy]="busy()" [error]="error()" />
 @if(visits().length){<form class="panel" (ngSubmit)="open()">
-<label>Aktivna poseta<select name="visit" [(ngModel)]="selected" required>@for(v of visits();track v.id){<option [ngValue]="v.id">Poseta #{{v.id}} · izložba #{{exhibitions()[v.id]}}</option>}</select></label>
-<label>QR token ili URL<input name="token" [(ngModel)]="token" required autocomplete="off"></label>
+<label>Aktivna poseta <span class="required-mark" aria-hidden="true">*</span><select name="visit" [(ngModel)]="selected" required>@for(v of visits();track v.id){<option [ngValue]="v.id">Poseta #{{v.id}} · izložba #{{exhibitions()[v.id]}}</option>}</select></label>
+<label>QR token ili URL <span class="required-mark" aria-hidden="true">*</span><input name="token" [(ngModel)]="token" required autocomplete="off"></label>
 <button class="button" [disabled]="busy()||!token.trim()">Nastavi na skeniranje</button></form>}
 @else if(!busy()&&!error()){<p class="message">Nemate aktivnu posetu. Blagajnik prvo mora validirati vašu ulaznicu.</p><a routerLink="/tickets">Moje ulaznice</a>}
 `})

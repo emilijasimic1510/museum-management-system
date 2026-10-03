@@ -1,3 +1,16 @@
+museum:
+  tts:
+    provider: ${MUSEUM_TTS_PROVIDER:espeak}
+    espeak-path: ${MUSEUM_TTS_ESPEAK_PATH:espeak-ng}
+    timeout-seconds: ${MUSEUM_TTS_TIMEOUT_SECONDS:30}
+    azure-key: ${MUSEUM_TTS_AZURE_KEY:}
+    azure-region: ${MUSEUM_TTS_AZURE_REGION:}
+    azure-voice: ${MUSEUM_TTS_AZURE_VOICE:sr-RS-SophieNeural}
+    piper-python: ${MUSEUM_TTS_PIPER_PYTHON:python}
+    piper-model: ${MUSEUM_TTS_PIPER_MODEL:}
+  audio:
+    storage-path: ${MUSEUM_AUDIO_STORAGE_PATH:./runtime/audio}
+
 spring:
   application:
     name: museum-backend

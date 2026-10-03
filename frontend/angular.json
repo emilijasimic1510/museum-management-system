@@ -3,7 +3,7 @@
   "cli": {"analytics": false},
   "projects": {"museum": {"projectType": "application", "root": "", "sourceRoot": "src", "prefix": "app",
     "architect": {
-      "build": {"builder": "@angular/build:application", "options": {"browser": "src/main.ts", "index": "src/index.html", "tsConfig": "tsconfig.app.json", "styles": ["src/styles.css"], "assets": [{"glob":"**/*","input":"public"}], "outputPath": "dist/museum"},
+      "build": {"builder": "@angular/build:application", "options": {"browser": "src/main.ts", "index": "src/index.html", "tsConfig": "tsconfig.app.json", "styles": ["src/styles.css", "src/polish.css"], "assets": [{"glob":"**/*","input":"public"}], "outputPath": "dist/museum"},
         "configurations": {"production": {"outputHashing": "all", "budgets": [{"type":"initial","maximumWarning":"650kB","maximumError":"1MB"}]}, "development": {"optimization": false, "sourceMap": true}}, "defaultConfiguration": "production"},
       "serve": {"builder": "@angular/build:dev-server", "options": {"proxyConfig": "proxy.conf.json"}, "configurations": {"development": {"buildTarget": "museum:build:development"}}, "defaultConfiguration": "development"},
       "test": {"builder": "@angular/build:unit-test", "options": {"tsConfig": "tsconfig.spec.json"}}

@@ -15,8 +15,12 @@ export class Auth {
   private api=inject(Api); private router=inject(Router);
   readonly currentAccount=signal<Account|null>(null);
   private accountRequest:Promise<Account>|null=null;
+  isAdmin(){return this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='ADMINISTRATOR')===true;}
+  isManager(){return this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='MANAGER')===true;}
   isCashier(){return this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='CASHIER')===true;}
-  isVisitor(){return !this.isCashier() && this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='VISITOR')===true;}
+  isCurator(){return !this.isCashier() && this.currentAccount()?.roles.some(r=>['CURATOR','ADMINISTRATOR'].includes(r.replace(/^ROLE_/,'')))===true;}
+  isGuide(){return !this.isCashier() && !this.isCurator() && this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='GUIDE')===true;}
+  isVisitor(){return !this.isCashier() && !this.isCurator() && !this.isGuide() && this.currentAccount()?.roles.some(r=>r.replace(/^ROLE_/,'')==='VISITOR')===true;}
   readonly session=signal<Session|null>(this.restore());
   private restore():Session|null {
     try { const s=JSON.parse(sessionStorage.getItem(KEY)||'null'); return s && typeof s.token==='string' && s.expiresAt>Date.now()?s:null; } catch { return null; }
@@ -47,6 +51,18 @@ export class Auth {
   logout() { this.clear(); void this.router.navigateByUrl('/'); }
 }
 export const authGuard:CanActivateFn=(_,state)=>inject(Auth).token()?true:inject(Router).createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
+export const guideGuard:CanActivateFn=async(_,state)=>{
+  const auth=inject(Auth),router=inject(Router);
+  if(!auth.token())return router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
+  try {await auth.account();return auth.isGuide()?true:router.createUrlTree(['/forbidden']);}
+  catch{return router.createUrlTree(['/login']);}
+};
+export const curatorGuard:CanActivateFn=async(_,state)=>{
+  const auth=inject(Auth),router=inject(Router);
+  if(!auth.token())return router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
+  try {await auth.account();return auth.isCurator()?true:router.createUrlTree(['/forbidden']);}
+  catch{return router.createUrlTree(['/login']);}
+};
 export const cashierGuard:CanActivateFn=async(_,state)=>{
   const auth=inject(Auth), router=inject(Router);
   if(!auth.token()) return router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
@@ -55,7 +71,7 @@ export const cashierGuard:CanActivateFn=async(_,state)=>{
 export const visitorGuard:CanActivateFn=async(route,state)=>{
   const auth=inject(Auth),router=inject(Router);
   if(!auth.token())return route.data?.['publicCatalog'] ? true : router.createUrlTree(['/login'],{queryParams:{returnUrl:state.url}});
-  try{await auth.account();return auth.isCashier()?router.createUrlTree(['/cashier']):auth.isVisitor()?true:router.createUrlTree(['/login']);}
+  try{await auth.account();return auth.isAdmin()?router.createUrlTree(['/admin']):auth.isCashier()?router.createUrlTree(['/cashier']):auth.isCurator()?router.createUrlTree(['/curator']):auth.isGuide()?router.createUrlTree(['/guide']):auth.isManager()?router.createUrlTree(['/manager']):auth.isVisitor()?true:router.createUrlTree(['/login']);}
   catch{return router.createUrlTree(['/login']);}
 };
 export const authInterceptor:HttpInterceptorFn=(request,next)=> {

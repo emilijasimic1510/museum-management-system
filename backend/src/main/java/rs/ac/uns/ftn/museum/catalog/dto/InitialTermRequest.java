@@ -10,5 +10,5 @@ import rs.ac.uns.ftn.museum.catalog.domain.*;
 public record InitialTermRequest(
         @NotNull Instant start,
         @NotNull Instant end,
-        @NotNull @Min(0) Integer capacity,
+        @NotNull @Positive Integer capacity,
         @NotNull TermStatus status) {}

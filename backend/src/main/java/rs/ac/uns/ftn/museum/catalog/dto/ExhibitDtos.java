@@ -8,17 +8,19 @@ import rs.ac.uns.ftn.museum.catalog.domain.ContentType;
 public final class ExhibitDtos {
     private ExhibitDtos() {}
     public record ExhibitRequest(@NotBlank String name, String creationPeriod, String type, String material, String origin, String description, @NotBlank String inventoryNumber) {}
-    public record ExhibitResponse(Long id, String name, String creationPeriod, String type, String material, String origin, String description, List<AuthorSummary> authors) {}
+    public record ExhibitResponse(Long id, String name, String creationPeriod, String type, String material, String origin, String description, List<AuthorSummary> authors, List<CatalogReference> exhibitions) {}
     public record ManagedExhibitResponse(ExhibitResponse exhibit, String inventoryNumber) {}
     public record AuthorRequest(@NotBlank String firstName, String lastName, Integer birthYear, Integer deathYear, String biography) {}
     public record AuthorResponse(Long id, String firstName, String lastName, Integer birthYear, Integer deathYear, String biography) {}
     public record AuthorSummary(Long id, String name, String contributionType) {}
     public record AuthorshipResponse(AuthorSummary author) {}
+    public record AuthorshipRequest(String contributionType, String note) {}
+    public record ManagedAuthorshipResponse(Long authorId, Long exhibitId, String contributionType, String note) {}
     public record CatalogReference(Long id, String name) {}
     public record ParticipationResponse(CatalogReference exhibition, CatalogReference exhibit, String contextDescription) {}
     public record ParticipationRequest(@NotNull @Positive Long exhibitionId, @NotNull @Positive Long exhibitId,
             Instant installedAt, Instant removedAt, String position, @Positive Integer tourOrder,
-            String contextDescription, @Size(max=512) String qrToken, String qrPath) {
+            String contextDescription) {
         @Override public String toString() { return "ParticipationRequest[QR data redacted]"; }
     }
     public record ManagedParticipationResponse(Long id, Long exhibitionId, Long exhibitId, Instant installedAt,

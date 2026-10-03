@@ -8,6 +8,7 @@ import rs.ac.uns.ftn.museum.people.domain.*;
 
 public interface EventRegistrationRepository extends JpaRepository<EventRegistration, EventRegistrationId> {
     long countByEventIdAndStatusNot(Long eventId, RegistrationStatus status);
+    @EntityGraph(attributePaths = "visitor")
     List<EventRegistration> findByEventId(Long eventId);
     List<EventRegistration> findByVisitorId(Long visitorId);
 }

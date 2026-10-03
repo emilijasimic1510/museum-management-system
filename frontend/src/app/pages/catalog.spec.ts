@@ -34,12 +34,45 @@ describe('Public digital catalog',()=>{
     await harness.navigateByUrl('/exhibits/1');
     requests.expectOne('/api/exhibits/1').flush(exhibit);
     requests.expectOne('/api/exhibits/1/participations').flush([{exhibit:{id:1,name:'Tišina'},exhibition:{id:3,name:'Tragovi svetlosti'},contextDescription:'Kontekst'}]);await render(harness);
+    if(signedIn){const access=requests.expectOne('/api/visits/me/exhibits/1/content');expect(access.request.headers.has('Authorization')).toBe(true);access.flush([]);await render(harness);}
     expect(harness.routeNativeElement?.textContent).toContain('Mila Jovanović');
     expect(harness.routeNativeElement?.textContent).toContain('Tragovi svetlosti');
     expect(harness.routeNativeElement?.textContent).toContain('Kontekst');
     expect(harness.routeNativeElement?.querySelector('[href="/scan"]')).toBeNull();
   });
 
+  it('shows public exhibitions on cards, limits long lists and explains missing exhibitions',async()=>{
+    const harness=await RouterTestingHarness.create();await harness.navigateByUrl('/exhibits');
+    requests.expectOne('/api/exhibits').flush([
+      {...exhibit,exhibitions:[{id:3,name:'Grad kroz objektiv'},{id:4,name:'Tragovi svetlosti'}]},
+      {...exhibit,id:2,name:'Bez postavke',exhibitions:[]},
+      {...exhibit,id:3,name:'Mnogo izložbi',exhibitions:Array.from({length:8},(_,i)=>({id:10+i,name:'Izložba '+i}))}
+    ]);await render(harness);
+    const cards=harness.routeNativeElement!.querySelectorAll('.catalog-card');
+    expect(cards[0].querySelectorAll('.card-exhibitions li').length).toBe(2);
+    expect(cards[0].textContent).toContain('Grad kroz objektiv');
+    expect(cards[0].textContent).toContain('Tragovi svetlosti');
+    expect(cards[0].querySelector('a[href="/exhibitions/3"]')).not.toBeNull();
+    expect(cards[1].textContent).toContain('Trenutno nije na javno objavljenim izložbama.');
+    expect(cards[2].querySelectorAll('.card-exhibitions li').length).toBe(3);
+    expect(cards[2].textContent).toContain('Još 5 izložbi');
+    expect(cards[2].querySelector('.card-exhibitions a[href="/exhibits/3"]')).not.toBeNull();
+  });
+  it('separates the contexts of one exhibit by exhibition on the public detail',async()=>{
+    const harness=await RouterTestingHarness.create();await harness.navigateByUrl('/exhibits/1');
+    requests.expectOne('/api/exhibits/1').flush(exhibit);
+    requests.expectOne('/api/exhibits/1/participations').flush([
+      {exhibit:{id:1,name:'Tišina'},exhibition:{id:3,name:'Grad kroz objektiv'},contextDescription:'Gradski kontekst'},
+      {exhibit:{id:1,name:'Tišina'},exhibition:{id:4,name:'Tragovi svetlosti'},contextDescription:'Svetlosni kontekst'}
+    ]);await render(harness);
+    const blocks=Array.from(harness.routeNativeElement!.querySelectorAll('article.route-block'));
+    expect(blocks.length).toBe(2);
+    expect(blocks[0].textContent).toContain('Grad kroz objektiv');
+    expect(blocks[0].textContent).toContain('Gradski kontekst');
+    expect(blocks[0].textContent).not.toContain('Svetlosni kontekst');
+    expect(blocks[1].textContent).toContain('Tragovi svetlosti');
+    expect(blocks[1].textContent).toContain('Svetlosni kontekst');
+  });
   it('searches and combines filters locally, resets them, and renders no results',async()=>{
     const fixture=TestBed.createComponent(ExhibitsPage);fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Učitavanje');
@@ -94,6 +127,7 @@ describe('Public digital catalog',()=>{
     role('CASHIER');const harness=await RouterTestingHarness.create();
     for(const path of ['/exhibits','/exhibits/1','/authors','/authors/2']) {
       await harness.navigateByUrl(path);expect(TestBed.inject(Router).url).toBe('/cashier');
+      if(path==='/exhibits'){requests.expectOne('/api/exhibitions').flush([]);await render(harness);}
     }
     requests.expectNone('/api/exhibits');
   });

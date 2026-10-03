@@ -7,5 +7,5 @@ import org.springframework.data.repository.query.Param;
 import rs.ac.uns.ftn.museum.people.domain.*;
 
 public interface GuideRepository extends JpaRepository<Guide, Long> {
-
+    Optional<Guide> findByAccountId(Long accountId);
 }

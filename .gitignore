@@ -63,3 +63,5 @@ temp/
 .DS_Store
 Thumbs.db
 desktop.ini
+# Private local TTS output
+runtime/

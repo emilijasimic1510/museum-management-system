@@ -14,6 +14,9 @@ public class VisitController {
     private final VisitService visits;
     public VisitController(VisitService visits) { this.visits=visits; }
     @GetMapping("/me") public List<VisitResponse> mine() { return visits.mine(); }
+    @GetMapping("/me/exhibits/{exhibitId}/content") public List<ContentAccess> exhibitContent(@PathVariable Long exhibitId) {
+        return visits.exhibitContent(exhibitId);
+    }
     @GetMapping("/{id}") public VisitResponse get(@PathVariable Long id) { return visits.get(id); }
     @PostMapping("/{id}/finish") public VisitResponse finish(@PathVariable Long id) { return visits.finish(id); }
     @PostMapping("/{id}/scans") public ResponseEntity<ScanResponse> scan(@PathVariable Long id,@Valid @RequestBody ScanRequest request) {

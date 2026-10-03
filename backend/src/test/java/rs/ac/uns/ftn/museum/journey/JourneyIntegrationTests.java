@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties={"museum.tts.espeak-path=./target/nonexistent-espeak-regression", "museum.audio.storage-path=./target/tts-failure-regression"})
 @AutoConfigureMockMvc(print=MockMvcPrint.NONE)
 @ActiveProfiles("test")
 class JourneyIntegrationTests extends PostgresTestBase {
@@ -67,6 +67,18 @@ class JourneyIntegrationTests extends PostgresTestBase {
     private JsonNode buy(Fixture f,User user) throws Exception { return call(post("/api/tickets"),user,purchaseBody(f,false),201); }
     private long enter(Fixture f,User cashier,JsonNode ticket) throws Exception {
         return call(post("/api/cashier/validate"),cashier,Map.of("qrToken",ticket.get("qrToken").asText(),"termId",f.term()),201).get("id").asLong();
+    }
+    @Test void missingLocalTtsDoesNotBlockCatalogLoginSaleValidationOrVisit() throws Exception {
+        Fixture f=fixture(3);User curator=user("CURATOR"),owner=user(),cashier=user("CASHIER");
+        jdbc.update("update ucesce_eksponata_na_izlozbi set kontekstualni_opis='Tekst konkretne postavke' where id_ucesca=?",f.first());
+        var failure=call(post("/api/curator/participations/"+f.first()+"/audio"),curator,Map.of("language","sr"),503);
+        assertThat(failure.get("code").asText()).isEqualTo("LOCAL_AUDIO_ERROR");
+        assertThat(failure.get("detail").asText()).contains("eSpeak NG");
+        assertThat(jdbc.queryForObject("select count(*) from digitalni_sadrzaj where ucesce_id=?",Long.class,f.first())).isZero();
+        call(get("/api/exhibitions/"+f.exhibition()),null,null,200);
+        long visit=enter(f,cashier,buy(f,owner));
+        call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),201);
+        assertThat(call(get("/api/visits/"+visit+"/content/"+f.first()),owner,null,200).get("contextDescription").asText()).isEqualTo("Tekst konkretne postavke");
     }
     @Test void allMigrationsAndThirtyOneMappingsValidate() {
         assertThat(jdbc.queryForList("select version from flyway_schema_history where success order by installed_rank",String.class)).containsExactly("1","2","3");
@@ -195,6 +207,74 @@ class JourneyIntegrationTests extends PostgresTestBase {
         call(post("/api/visits/"+visit+"/finish"),owner,null,200);
         call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),409);
     }
+    @Test void finishedHistoryAndRatingAreOwnedPersistentAndSingleUse() throws Exception {
+        Fixture f=fixture(2);User owner=user(),other=user(),cashier=user("CASHIER");
+        long visit=enter(f,cashier,buy(f,owner));String path="/api/visits/"+visit;
+        call(post(path+"/rating"),owner,Map.of("rating",5),409);
+        call(post(path+"/scans"),owner,Map.of("qrToken",f.firstQr()),201);
+        JsonNode closed=call(post(path+"/finish"),owner,null,200);
+        assertThat(closed.path("status").asText()).isEqualTo("ZAVRSENA");
+        assertThat(closed.path("exitedAt").isTextual()).isTrue();
+        assertThat(closed.path("exhibitionId").asLong()).isEqualTo(f.exhibition());
+        assertThat(closed.path("exhibitionName").asText()).isEqualTo("Journey");
+        // PostgreSQL timestamps have microsecond precision; compare persisted responses for idempotence.
+        closed=call(get(path),owner,null,200);
+        assertThat(call(post(path+"/finish"),owner,null,200)).isEqualTo(closed);
+        maintenance.advanceStatuses();
+        assertThat(call(get(path),owner,null,200)).isEqualTo(closed);
+        assertThat(call(get("/api/visits/me"),owner,null,200)).contains(closed);
+        assertThat(call(get("/api/visits/me"),other,null,200)).isEmpty();
+        call(post(path+"/scans"),owner,Map.of("qrToken",f.secondQr()),409);
+        JsonNode history=call(get(path+"/scans"),owner,null,200);
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).path("participation").path("name").asText()).isEqualTo("First");
+        assertThat(history.get(0).path("participation").path("content")).isEmpty();
+        for(int invalid:new int[]{0,6})call(post(path+"/rating"),owner,Map.of("rating",invalid),400);
+        call(post(path+"/rating"),other,Map.of("rating",3),403);
+        call(post(path+"/finish"),other,null,403);
+        call(get(path+"/scans"),other,null,403);
+        JsonNode rating=call(post(path+"/rating"),owner,Map.of("rating",1,"comment","Posebno mi se dopao raspored postavke."),201);
+        assertThat(rating.path("visitId").asLong()).isEqualTo(visit);
+        assertThat(rating.path("rating").asInt()).isEqualTo(1);
+        assertThat(rating.path("comment").asText()).isEqualTo("Posebno mi se dopao raspored postavke.");
+        assertThat(rating.path("ratedAt").isTextual()).isTrue();
+        JsonNode storedRating=call(get(path+"/rating"),owner,null,200);
+        for(String field:List.of("id","visitId","rating","comment"))assertThat(storedRating.path(field)).isEqualTo(rating.path(field));
+        assertThat(java.time.Duration.between(java.time.Instant.parse(rating.path("ratedAt").asText()),
+                java.time.Instant.parse(storedRating.path("ratedAt").asText())).abs()).isLessThan(java.time.Duration.ofMillis(1));
+        call(post(path+"/rating"),owner,Map.of("rating",5),409);
+        call(get(path+"/rating"),other,null,403);
+        call(get("/api/visits/me"),null,null,401);
+        call(get(path+"/rating"),null,null,401);
+        call(post(path+"/rating"),null,Map.of("rating",5),401);
+        for(String role:List.of("CASHIER","GUIDE","CURATOR")) {
+            User staff=user(role);
+            jdbc.update("delete from nalog_uloga where nalog_id=? and uloga_id=(select id from uloga where naziv='VISITOR')",staff.id());
+            call(get("/api/visits/me"),staff,null,403);
+            call(get(path+"/rating"),staff,null,403);
+            call(post(path+"/rating"),staff,Map.of("rating",5),403);
+        }
+    }
+    @Test void futureRecommendationsUseCompletedScansOnlyWithConsentAndKeepGeneralFallback() throws Exception {
+        Fixture f=fixture(2);User owner=user(),cashier=user("CASHIER");
+        long visit=enter(f,cashier,buy(f,owner));
+        call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),201);
+        call(post("/api/visits/"+visit+"/finish"),owner,null,200);
+        JsonNode general=call(get("/api/recommendations/exhibitions"),owner,null,200);
+        assertThat(general).isNotEmpty();
+        assertThat(general.findValuesAsText("explanation")).allMatch(s->s.contains("opšti pregled"));
+        verifyNoInteractions(graph);
+        jdbc.update("update posetilac set saglasnost_za_preporuke=true where nalog_id=?",owner.id());
+        long previous=jdbc.queryForObject("select eksponat_id from ucesce_eksponata_na_izlozbi where id_ucesca=?",Long.class,f.first());
+        when(graph.scores(any(),anyList(),anyList())).thenReturn(Map.of());
+        JsonNode fallback=call(get("/api/recommendations/exhibitions"),owner,null,200);
+        assertThat(fallback.findValuesAsText("explanation")).allMatch(s->s.contains("opšti pregled"));
+        verify(graph).scores(eq(previous),anyList(),anyList());
+        clearInvocations(graph);
+        jdbc.update("update posetilac set saglasnost_za_preporuke=false where nalog_id=?",owner.id());
+        assertThat(call(get("/api/recommendations/exhibitions"),owner,null,200)).isEqualTo(general);
+        verifyNoInteractions(graph);
+    }
     @Test void demoEndpointsAreNotAvailableOutsideLocalProfile() throws Exception {
         User staff=user("CASHIER"),owner=user();
         call(get("/api/local-demo/board"),staff,null,403);
@@ -246,6 +326,8 @@ class JourneyIntegrationTests extends PostgresTestBase {
         Fixture f=fixture(2);User owner=user(),cashier=user("CASHIER");
         long visit=enter(f,cashier,buy(f,owner));
         jdbc.update("insert into digitalni_sadrzaj(ucesce_id,tip_sadrzaja,putanja,verzija,generisan_automatski,datum_kreiranja) values (?,'TEKST','/content/test',1,false,now())",f.first());
+        call(get("/api/visits/"+visit+"/content/"+f.first()),owner,null,403);
+        call(post("/api/visits/"+visit+"/scans"),owner,Map.of("qrToken",f.firstQr()),201);
         JsonNode content=call(get("/api/visits/"+visit+"/content/"+f.first()),owner,null,200);
         assertThat(content.get("content").get(0).get("type").asText()).isEqualTo("TEKST");
         call(get("/api/recommendations/exhibitions"),owner,null,200);
@@ -256,6 +338,45 @@ class JourneyIntegrationTests extends PostgresTestBase {
         verify(graph).scores(any(),anyList(),anyList());
         call(post("/api/visits/"+visit+"/finish"),owner,null,200);
         call(get("/api/visits/"+visit+"/content/"+f.first()),owner,null,409);
+    }
+    @Test void scanUnlockIsScopedToParticipationVisitorAndActiveVisit() throws Exception {
+        Fixture a=fixture(4),b=fixture(4);User owner=user(),other=user(),cashier=user("CASHIER");
+        long exhibit=jdbc.queryForObject("select eksponat_id from ucesce_eksponata_na_izlozbi where id_ucesca=?",Long.class,a.first());
+        jdbc.update("update ucesce_eksponata_na_izlozbi set eksponat_id=? where id_ucesca=?",exhibit,b.first());
+        jdbc.update("update ucesce_eksponata_na_izlozbi set kontekstualni_opis='Context A' where id_ucesca=?",a.first());
+        for(long participation:List.of(a.first(),b.first()))jdbc.update("insert into digitalni_sadrzaj(ucesce_id,tip_sadrzaja,putanja,verzija,generisan_automatski,datum_kreiranja) values (?,'TEKST',?,1,false,now())",participation,"/content/"+participation);
+        String summary="/api/visits/me/exhibits/"+exhibit+"/content";
+        call(get(summary),null,null,401);
+        assertThat(call(get(summary),owner,null,200).get(0).get("state").asText()).isEqualTo("NO_ACTIVE_VISIT");
+        long visitA=enter(a,cashier,buy(a,owner)),visitB=enter(b,cashier,buy(b,owner));
+        String contentA="/api/visits/"+visitA+"/content/"+a.first();
+        call(get(contentA),owner,null,403);
+        call(get(contentA),other,null,403);
+        JsonNode locked=call(get(summary),owner,null,200);
+        assertThat(locked.get(0).get("state").asText()).isEqualTo("SCAN_REQUIRED");
+        assertThat(locked.toString()).doesNotContain("/content/","Context A");
+        call(post("/api/visits/"+visitA+"/scans"),owner,Map.of("qrToken",a.firstQr()),201);
+        assertThat(jdbc.queryForObject("select count(*) from skeniranje_eksponata where poseta_id=? and ucesce_id=?",Integer.class,visitA,a.first())).isEqualTo(1);
+        JsonNode unlocked=call(get(contentA),owner,null,200);
+        assertThat(unlocked.get("contextDescription").asText()).isEqualTo("Context A");
+        assertThat(unlocked.get("content").get(0).get("path").asText()).isEqualTo("/content/"+a.first());
+        call(get("/api/visits/"+visitA+"/content/"+a.second()),owner,null,403);
+        call(get("/api/visits/"+visitA+"/content/"+b.first()),owner,null,409);
+        call(get("/api/visits/"+visitB+"/content/"+b.first()),owner,null,403);
+        JsonNode split=call(get(summary),owner,null,200);
+        assertThat(split.get(0).get("state").asText()).isEqualTo("UNLOCKED");
+        assertThat(split.get(1).get("state").asText()).isEqualTo("SCAN_REQUIRED");
+        assertThat(split.toString()).doesNotContain("/content/"+b.first());
+        assertThat(call(get(summary),other,null,200).toString()).doesNotContain("Context A","/content/");
+        call(post("/api/visits/"+visitB+"/scans"),owner,Map.of("qrToken",b.firstQr()),201);
+        assertThat(call(get("/api/visits/"+visitB+"/content/"+b.first()),owner,null,200).get("content").get(0).get("path").asText()).isEqualTo("/content/"+b.first());
+        call(post("/api/visits/"+visitA+"/finish"),owner,null,200);
+        call(get(contentA),owner,null,409);
+        assertThat(call(get("/api/visits/"+visitA+"/scans"),owner,null,200).toString()).doesNotContain("Context A","/content/");
+        assertThat(call(get(summary),owner,null,200).get(0).get("state").asText()).isEqualTo("NO_ACTIVE_VISIT");
+        long newVisit=enter(a,cashier,buy(a,owner));
+        call(get("/api/visits/"+newVisit+"/content/"+a.first()),owner,null,403);
+        assertThat(call(get(summary),owner,null,200).get(0).get("state").asText()).isEqualTo("SCAN_REQUIRED");
     }
     @Test void graphProjectionQueriesReadActualPostgresSchema() {
         org.neo4j.driver.Driver driver=mock(org.neo4j.driver.Driver.class);

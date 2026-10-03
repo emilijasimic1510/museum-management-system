@@ -20,7 +20,7 @@ public final class ScheduleRules {
     }
     public static void term(Instant start, Instant end, Integer capacity, Instant exhibitionStart, Instant exhibitionEnd) {
         interval(start, end);
-        if (capacity == null || capacity < 0) throw new InvalidRequestException("Term capacity must not be negative");
+        if (capacity == null || capacity <= 0) throw new InvalidRequestException("Term capacity must be positive");
         if (start.isBefore(exhibitionStart) || end.isAfter(exhibitionEnd)) {
             throw new ConflictException("Term must be within exhibition period");
         }

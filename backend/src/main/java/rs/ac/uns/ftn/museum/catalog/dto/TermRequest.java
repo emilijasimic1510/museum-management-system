@@ -11,5 +11,5 @@ public record TermRequest(
         @NotNull Long exhibitionId,
         @NotNull Instant start,
         @NotNull Instant end,
-        @NotNull @Min(0) Integer capacity,
+        @NotNull @Positive Integer capacity,
         @NotNull TermStatus status) {}

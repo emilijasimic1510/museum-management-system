@@ -77,6 +77,66 @@ class PeopleIntegrationTests extends PostgresTestBase {
         return new HashMap<>(Map.of("accountId", user.id(), "museumId", museum, "firstName", "Test", "lastName", "Employee",
                 "hiredOn", "2026-01-01", "type", type.name()));
     }
+    @Test void guideAuthorizationProfileCrudAndPrivateRegistrations() throws Exception {
+        User guide=user("GUIDE"), admin=user("ADMINISTRATOR"), visitor=user();
+        long guideId=call(post("/api/employees"),admin,employeeBody(guide,museum(),EmployeeType.GUIDE),201).path("id").asLong();
+        assertThat(call(get("/api/guides/me"),guide,null,200).path("id").asLong()).isEqualTo(guideId);
+        call(get("/api/guides/me"),null,null,401);
+        call(get("/api/admin/accounts"),guide,null,403);
+        call(get("/api/employees"),guide,null,403);
+        var body=new HashMap<>(eventBody(exhibition(),3));body.put("guideId",guideId);
+        long event=call(post("/api/events"),guide,body,201).path("id").asLong();
+        assertThat(call(get("/api/events"),null,null,200).isArray()).isTrue();
+        call(get("/api/events/"+event+"/registrations"),null,null,401);
+        call(post("/api/events"),null,body,401);
+        call(put("/api/events/"+event),null,body,401);
+        for(User denied:List.of(visitor,user("CASHIER"),user("CURATOR"),admin)) {
+            call(get("/api/guides/me"),denied,null,403);
+            call(post("/api/events"),denied,body,403);
+            call(put("/api/events/"+event),denied,body,403);
+            call(delete("/api/events/"+event),denied,null,403);
+            call(get("/api/events/"+event+"/registrations"),denied,null,403);
+            call(put("/api/events/"+event+"/registrations/1"),denied,Map.of("status","OTKAZAN"),403);
+        }
+        body.put("name","Updated event");
+        assertThat(call(put("/api/events/"+event),guide,body,200).path("name").asText()).isEqualTo("Updated event");
+        body.put("exhibitionId",Long.MAX_VALUE);call(post("/api/events"),guide,body,404);
+        body.put("exhibitionId",exhibition());body.put("guideId",Long.MAX_VALUE);call(post("/api/events"),guide,body,404);
+        body.put("guideId",guideId);body.put("capacity",-1);call(post("/api/events"),guide,body,400);
+        body.put("capacity",3);body.put("end",body.get("start"));call(post("/api/events"),guide,body,400);
+        call(delete("/api/events/"+event),guide,null,204);
+        call(get("/api/events/"+event),null,null,404);
+    }
+    @Test void visitorIdentityComesFromSessionAndAttendanceCannotBeCancelled() throws Exception {
+        User guide=user("GUIDE"), first=user(),second=user();
+        long event=call(post("/api/events"),guide,eventBody(exhibition(),2),201).path("id").asLong();
+        long firstId=call(get("/api/visitors/me"),first,null,200).path("id").asLong();
+        long secondId=call(get("/api/visitors/me"),second,null,200).path("id").asLong();
+        call(post("/api/events/"+event+"/registrations"),null,null,401);
+        var registration=call(post("/api/events/"+event+"/registrations"),first,Map.of("visitorId",secondId,"status","PRISUSTVOVAO"),201);
+        assertThat(registration.path("visitorId").asLong()).isEqualTo(firstId);
+        assertThat(registration.path("status").asText()).isEqualTo("PRIJAVLJEN");
+        assertThat(call(get("/api/visitors/me/registrations"),second,null,200)).isEmpty();
+        call(delete("/api/events/"+event+"/registrations/me"),second,null,404);
+        call(delete("/api/events/"+event+"/registrations/"+firstId),second,null,403);
+        call(put("/api/events/"+event+"/registrations/"+firstId),guide,Map.of("status","UNKNOWN"),400);
+        call(put("/api/events/"+event+"/registrations/"+firstId),guide,Map.of("status","PRISUSTVOVAO"),200);
+        call(delete("/api/events/"+event+"/registrations/me"),first,null,409);
+    }
+    @Test void unavailableAndPastEventsRejectRegistration() throws Exception {
+        User guide=user("GUIDE"),visitor=user();long exhibition=exhibition();
+        for(String status:List.of("OTKAZAN","ZAVRSEN","POPUNJEN")) {
+            var body=new HashMap<>(eventBody(exhibition,10));body.put("status",status);
+            long event=call(post("/api/events"),guide,body,201).path("id").asLong();
+            call(post("/api/events/"+event+"/registrations"),visitor,null,409);
+        }
+        var body=new HashMap<>(eventBody(exhibition,10));body.put("start",Instant.now().minusSeconds(7200).toString());body.put("end",Instant.now().minusSeconds(3600).toString());
+        long past=call(post("/api/events"),guide,body,201).path("id").asLong();
+        call(post("/api/events/"+past+"/registrations"),visitor,null,409);
+        body.put("end",Instant.now().plusSeconds(3600).toString());
+        long started=call(post("/api/events"),guide,body,201).path("id").asLong();
+        call(post("/api/events/"+started+"/registrations"),visitor,null,409);
+    }
     @Test void migrationsMappingsAndEmailOnlySchema() {
         assertThat(jdbc.queryForList("select version from flyway_schema_history where success and version in ('1','2') order by installed_rank", String.class)).containsExactly("1","2");
         assertThat(em.getMetamodel().getEntities().stream().filter(e->!e.getJavaType().getPackageName().contains(".journey."))).hasSize(24);
@@ -211,7 +271,12 @@ class PeopleIntegrationTests extends PostgresTestBase {
         call(post("/api/events/"+id+"/registrations"),second,null,409);
         call(put("/api/events/"+id),guide,eventBody(exhibition,0),409);
         call(get("/api/events/"+id+"/registrations"),first,null,403);
-        assertThat(call(get("/api/events/"+id+"/registrations"),guide,null,200).size()).isEqualTo(1);
+        var attendees=call(get("/api/events/"+id+"/registrations"),guide,null,200);
+        assertThat(attendees.size()).isEqualTo(1);
+        var profile=call(get("/api/visitors/me"),first,null,200);
+        assertThat(attendees.get(0).path("firstName")).isEqualTo(profile.path("firstName"));
+        assertThat(attendees.get(0).path("lastName")).isEqualTo(profile.path("lastName"));
+        assertThat(attendees.get(0).has("email") || attendees.get(0).has("phone") || attendees.get(0).has("passwordHash")).isFalse();
         call(delete("/api/events/"+id+"/registrations/me"),first,null,204);
         call(post("/api/events/"+id+"/registrations"),second,null,201);
         call(delete("/api/events/"+id+"/registrations/me"),second,null,204);

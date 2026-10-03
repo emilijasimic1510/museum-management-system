@@ -19,7 +19,7 @@ public class LocalDemoQrController {
     @GetMapping("/enabled") public Map<String,Boolean> enabled() { return Map.of("enabled",true); }
     @GetMapping("/board") public List<DemoQr> board() { return entries(null); }
     @GetMapping("/visits/{id}") public List<DemoQr> forVisit(@PathVariable Long id) {
-        visits.next(id); // Enforces ownership and current active-visit rules.
+        visits.requireActiveOwner(id);
         Long exhibition=jdbc.queryForObject("select t.izlozba_id from poseta p join ulaznica u on u.id=p.ulaznica_id join termin_izlozbe t on t.id=u.termin_id where p.id=?",Long.class,id);
         return entries(exhibition);
     }
@@ -30,7 +30,7 @@ public class LocalDemoQrController {
             join izlozba x on x.id=p.izlozba_id
             where p.qr_token in ('DEMO-QR-001','DEMO-QR-002','DEMO-QR-003',
                 'DEMO-SCULPTURE-QR-001','DEMO-SCULPTURE-QR-002','DEMO-SCULPTURE-QR-003',
-                'DEMO-CITY-QR-001','DEMO-CITY-QR-002','DEMO-CITY-QR-003')
+                'DEMO-CITY-QR-001','DEMO-CITY-QR-002','DEMO-CITY-QR-003','DEMO-LIGHT-CITY-QR-001')
             and (cast(? as bigint) is null or p.izlozba_id=?)
             and (p.datum_postavljanja is null or p.datum_postavljanja<=now())
             and (p.datum_uklanjanja is null or p.datum_uklanjanja>now())

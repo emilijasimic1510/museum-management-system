@@ -21,6 +21,11 @@ import { Feedback } from '../shared/feedback';
     <div class="cards catalog-cards">@for(e of filtered();track e.id){
       <article class="panel catalog-card"><p class="eyebrow">{{e.type || 'EKSPONAT'}}</p><h2><a [routerLink]="['/exhibits',e.id]">{{e.name}}</a></h2>
         <dl class="catalog-facts">@if(e.material){<div><dt>Materijal</dt><dd>{{e.material}}</dd></div>}@if(e.origin){<div><dt>Poreklo</dt><dd>{{e.origin}}</dd></div>}@if(e.creationPeriod){<div><dt>Period / godina</dt><dd>{{e.creationPeriod}}</dd></div>}</dl>
+        <div class="card-exhibitions"><h3>Izložbe</h3>
+          <ul>@for(x of (e.exhibitions || []).slice(0,3);track x.id){<li><a [routerLink]="['/exhibitions',x.id]">{{x.name}}</a></li>}</ul>
+          @if(!(e.exhibitions || []).length){<p class="muted">Trenutno nije na javno objavljenim izložbama.</p>}
+          @if((e.exhibitions || []).length>3){<a [routerLink]="['/exhibits',e.id]">Još {{e.exhibitions.length-3}} izložbi — pogledajte sve</a>}
+        </div>
         <p class="muted clamp">{{e.description || 'Opis eksponata još nije dodat.'}}</p><a class="button secondary" [routerLink]="['/exhibits',e.id]" [attr.aria-label]="'Detalji eksponata: '+e.name">Pogledajte eksponat ↗</a>
       </article>
     }@empty{<div class="empty"><h2>Nema rezultata</h2><p>Promenite naziv ili izabrane filtere.</p><button class="button secondary" (click)="reset()">Prikaži sve eksponate</button></div>}</div>

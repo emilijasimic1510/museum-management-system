@@ -1,0 +1,20 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { Auth } from '../core/auth';
+import { VisitorContent } from './visitor-content';
+describe('Scan to unlock visitor content',()=>{
+ let http:HttpTestingController;
+ const locked={participationId:10,exhibitionId:1,exhibitionName:'Izložba A',visitId:3,state:'SCAN_REQUIRED',participation:null};
+ beforeEach(()=>{sessionStorage.clear();TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([])]});http=TestBed.inject(HttpTestingController);});
+ afterEach(()=>{http.verify();vi.useRealTimers();sessionStorage.clear();});
+ function page(login=true){if(login)TestBed.inject(Auth).session.set({token:'test',expiresAt:Date.now()+60000});const f=TestBed.createComponent(VisitorContent);f.componentRef.setInput('exhibitId',1);f.detectChanges();return f;}
+ async function settle(f:any){await f.whenStable();f.detectChanges();}
+ it('shows visit requirement without private requests for anonymous readers',async()=>{const f=page(false);await settle(f);http.expectNone('/api/visits/me/exhibits/1/content');expect(f.nativeElement.textContent).toContain('Digitalni sadržaj dostupan tokom obilaska');});
+ it('keeps installations separate and refreshes after scanning',async()=>{const f=page();http.expectOne('/api/visits/me/exhibits/1/content').flush([locked,{...locked,participationId:20,exhibitionId:2,exhibitionName:'Izložba B'}]);await settle(f);expect(f.nativeElement.textContent).toContain('Skenirajte QR oznaku postavke');expect(f.nativeElement.querySelector('a').getAttribute('href')).toBe('/visits/3');f.componentInstance.load();http.expectOne('/api/visits/me/exhibits/1/content').flush([{...locked,state:'UNLOCKED',participation:{participationId:10,name:'Eksponat',contextDescription:'Kontekst A',content:[{id:1,type:'TEKST',path:'/content/a',language:'sr',version:1}]}},{...locked,participationId:20,exhibitionId:2,exhibitionName:'Izložba B'}]);await settle(f);const rows=f.nativeElement.querySelectorAll('article');expect(rows[0].textContent).toContain('Kontekst A');expect(rows[0].querySelector('a').getAttribute('href')).toContain('/content/a');expect(rows[1].textContent).toContain('Skenirajte QR');expect(rows[1].textContent).not.toContain('Kontekst A');});
+ it('shows no active visit and scanned empty states',async()=>{const f=page();http.expectOne('/api/visits/me/exhibits/1/content').flush([{...locked,state:'NO_ACTIVE_VISIT',visitId:null},{...locked,participationId:20,state:'UNLOCKED',participation:{participationId:20,name:'Eksponat',contextDescription:'Kontekst',content:[]}}]);await settle(f);expect(f.nativeElement.textContent).toContain('Digitalni sadržaj dostupan tokom obilaska');expect(f.nativeElement.textContent).toContain('još nema digitalnog sadržaja');});
+ it('does not display old content when exhibit changes during a request',async()=>{const f=page();const first=http.expectOne('/api/visits/me/exhibits/1/content');f.componentRef.setInput('exhibitId',2);f.detectChanges();http.expectOne('/api/visits/me/exhibits/2/content').flush([locked]);first.flush([{...locked,state:'UNLOCKED',participation:{contextDescription:'STALE SECRET',content:[]}}]);await settle(f);expect(f.nativeElement.textContent).not.toContain('STALE SECRET');});
+ it('bounds loading and permits retry',async()=>{vi.useFakeTimers();const f=page();const request=http.expectOne('/api/visits/me/exhibits/1/content');await vi.advanceTimersByTimeAsync(10001);f.detectChanges();expect(request.cancelled).toBe(true);expect(f.nativeElement.textContent).toContain('Pokušaj ponovo');f.componentInstance.load();http.expectOne('/api/visits/me/exhibits/1/content').flush([locked]);await vi.advanceTimersByTimeAsync(0);f.detectChanges();expect(f.componentInstance.resource.error()).toBe('');});
+ it('rejects unsafe content links',()=>{const f=page(false);expect(f.componentInstance.contentLink('javascript:alert(1)')).toBeNull();});
+});

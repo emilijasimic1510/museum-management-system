@@ -7,6 +7,7 @@ export interface CatalogAuthor { id:number; name:string; contributionType:string
 export interface CatalogExhibit {
   id:number; name:string; description:string|null; creationPeriod:string|null;
   type:string|null; material:string|null; origin:string|null; authors:CatalogAuthor[];
+  exhibitions:{id:number;name:string}[];
 }
 export interface CatalogParticipation {
   exhibition:{id:number;name:string}; exhibit:{id:number;name:string}; contextDescription:string|null;
