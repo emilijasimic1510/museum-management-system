@@ -1,9 +1,16 @@
 spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
+      idle-timeout: 10000
   neo4j:
     uri: bolt://localhost:7687
     authentication:
       username: neo4j
       password: test-only-password
 museum:
+  mail:
+    enabled: false
   automation:
     enabled: false

@@ -1,0 +1,26 @@
+app-qr-board{display:block}
+.qr-board-filters,.qr-board-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.qr-board-actions{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:20px 0}
+.qr-board-selection{max-height:340px;overflow:auto;padding:8px}
+.qr-board-selection label{display:flex;align-items:center;gap:12px;padding:8px}
+.qr-board-selection input{width:auto}
+.qr-board-sheet{margin:24px auto;padding:16px;background:white;color:black;max-width:190mm}
+.qr-board-card{border:1px solid #000;padding:16px;text-align:center;min-width:0;break-inside:avoid;page-break-inside:avoid;background:white;color:black}
+.qr-board-card h2{font:700 22px/1.2 sans-serif;margin:8px 0;overflow-wrap:anywhere}
+.qr-board-card p{font:14px/1.4 sans-serif;margin:8px 0;overflow-wrap:anywhere}
+.qr-board-card app-participation-qr{display:block}
+.qr-board-card img{display:block;margin:auto}
+@media(max-width:600px){.qr-board-filters,.qr-board-grid{grid-template-columns:1fr}}
+@media print{
+  @page{size:A4 portrait;margin:10mm}
+  body:has(app-qr-board){background:white!important;color:black!important}
+  body:has(app-qr-board) app-root>header,body:has(app-qr-board) app-root>footer,body:has(app-qr-board) app-root>.skip,
+  body:has(app-qr-board) .qr-board-controls,body:has(app-qr-board) .qr-board-page-label{display:none!important}
+  body:has(app-qr-board) #main{margin:0!important;padding:0!important;width:100%!important;max-width:none!important}
+  .qr-board-sheet{padding:0;margin:0;max-width:none;break-after:page;page-break-after:always}
+  .qr-board-sheet:last-child{break-after:auto;page-break-after:auto}
+  .qr-board-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6mm}
+  .qr-board-card{padding:5mm;min-height:115mm;box-shadow:none!important;border:1px solid black!important}
+  .qr-board-card img{width:55mm!important;height:55mm!important;max-width:100%!important}
+  .qr-board-pending{display:none!important}
+}

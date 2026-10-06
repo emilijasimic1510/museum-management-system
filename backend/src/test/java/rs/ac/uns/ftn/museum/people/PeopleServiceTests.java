@@ -39,7 +39,7 @@ class PeopleServiceTests {
         AccountRepository accounts = mock(AccountRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         AccountService service = new AccountService(accounts,mock(AccountRoleRepository.class),mock(RoleRepository.class),
-                mock(VisitorRepository.class),encoder,mock(TokenService.class),Clock.systemUTC());
+                mock(VisitorRepository.class),encoder,mock(TokenService.class),Clock.systemUTC(),mock(rs.ac.uns.ftn.museum.notification.EmailService.class));
         clearInvocations(encoder);
         when(accounts.existsByEmail("visitor@example.test")).thenReturn(true);
         RegisterRequest request = new RegisterRequest("VISITOR@example.test",java.util.UUID.randomUUID().toString(),"Test","Visitor",null,false);
@@ -54,7 +54,7 @@ class PeopleServiceTests {
         when(encoder.encode(any())).thenReturn("dummy");
         when(accounts.findByEmail(any())).thenReturn(Optional.empty());
         AccountService service = new AccountService(accounts,mock(AccountRoleRepository.class),mock(RoleRepository.class),
-                mock(VisitorRepository.class),encoder,tokens,Clock.systemUTC());
+                mock(VisitorRepository.class),encoder,tokens,Clock.systemUTC(),mock(rs.ac.uns.ftn.museum.notification.EmailService.class));
         String password = java.util.UUID.randomUUID().toString();
         assertThatThrownBy(() -> service.login(new LoginRequest("missing@example.test",password))).isInstanceOf(BadCredentialsException.class);
         verify(encoder).matches(password,"dummy");

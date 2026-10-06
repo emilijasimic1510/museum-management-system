@@ -4,6 +4,8 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { Api, PUBLIC_CATALOG_REQUEST } from './api';
 import { Account, Registration, Token } from './models';
+import { I18n } from './i18n';
+import { apiBaseUrl } from './runtime-config';
 
 const KEY='museum.session';
 interface Session { token:string; expiresAt:number }
@@ -76,8 +78,9 @@ export const visitorGuard:CanActivateFn=async(route,state)=>{
 };
 export const authInterceptor:HttpInterceptorFn=(request,next)=> {
   const auth=inject(Auth); const router=inject(Router);
-  const apiRequest=request.url.startsWith('/api/');
-  const anonymous=request.url.startsWith('/api/auth/') || request.context.get(PUBLIC_CATALOG_REQUEST);
+  const apiRequest=request.url===apiBaseUrl() || request.url.startsWith(apiBaseUrl()+'/');
+  if(apiRequest)request=request.clone({setHeaders:{'X-Museum-Language':inject(I18n).language()}});
+  const anonymous=(request.url===apiBaseUrl()+'/auth' || request.url.startsWith(apiBaseUrl()+'/auth/')) || request.context.get(PUBLIC_CATALOG_REQUEST);
   const token=apiRequest&&!anonymous?auth.token():null;
   return next(token?request.clone({setHeaders:{Authorization:`Bearer ${token}`}}):request).pipe(catchError((error:unknown)=> {
     if(error instanceof HttpErrorResponse && error.status===401 && token) {

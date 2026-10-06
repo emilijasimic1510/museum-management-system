@@ -47,10 +47,10 @@ describe('Curator module',()=>{
     const links=Array.from(f.nativeElement.querySelectorAll('nav a')).map((a:any)=>a.getAttribute('href'));
     if(value==='CURATOR'){
       expect(nav).toContain('Postavke');expect(nav).toContain('Digitalni sadržaj');
-      expect(links).toEqual(['/curator','/curator/exhibits','/curator/authors','/curator/participations','/curator/digital-content','/curator/profile','/collection']);
+      expect(links).toEqual(['/curator','/curator/exhibits','/curator/authors','/curator/participations','/curator/digital-content','/curator/profile','/staff/qr-board','/collection']);
     }else{
       expect(nav).toContain('Korisnički nalozi');expect(nav).toContain('Uloge');expect(nav).toContain('Zaposleni');
-      expect(links).toEqual(['/admin','/admin/accounts','/admin/roles','/admin/employees','/collection','/admin/profile']);
+      expect(links).toEqual(['/admin','/admin/accounts','/admin/roles','/admin/employees','/collection','/admin/profile','/staff/qr-board']);
     }
     expect(nav).not.toContain('Ulaznice');expect(nav).not.toContain('Validacija');expect(nav).not.toContain('Posete');
     expect(links).not.toContain('/manager');

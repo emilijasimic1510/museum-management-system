@@ -132,6 +132,7 @@ public class ExhibitCatalogService {
         if (!d.getParticipation().getId().equals(r.participationId()))
             throw new ConflictException("Content participation cannot be changed; create a new content entry");
         if(d.getPath().startsWith(rs.ac.uns.ftn.museum.audio.AudioStorage.PREFIX))throw new InvalidRequestException("Generisani audio je nepromenljiv; generišite novu verziju.");
+        if(d.getPath().startsWith(rs.ac.uns.ftn.museum.media.ImageStorage.PREFIX))throw new InvalidRequestException("Upload a new image version instead of editing an internal image reference.");
         apply(d,r); contents.flush(); return content(d);
     }
     public void deleteContent(Long id) { contents.delete(requireContent(id)); contents.flush(); }
@@ -195,6 +196,6 @@ public class ExhibitCatalogService {
                 p.getRemovedAt(),p.getPosition(),p.getTourOrder(),p.getContextDescription(),p.getQrToken(),p.getQrPath());
     }
     private DigitalContentResponse content(DigitalContent d) {
-        return new DigitalContentResponse(d.getId(),d.getParticipation().getId(),d.getType(),rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion(),d.getAutomaticallyGenerated(),d.getCreatedAt());
+        return new DigitalContentResponse(d.getId(),d.getParticipation().getId(),d.getType(),d.getPath().startsWith(rs.ac.uns.ftn.museum.media.ImageStorage.PREFIX)?"":rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion(),d.getAutomaticallyGenerated(),d.getCreatedAt());
     }
 }

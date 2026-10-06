@@ -5,6 +5,7 @@ import java.time.*;
 import java.util.*;
 import java.security.SecureRandom;
 import org.springframework.stereotype.Service;
+import rs.ac.uns.ftn.museum.notification.EmailService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import rs.ac.uns.ftn.museum.catalog.domain.*;
@@ -20,6 +21,7 @@ import static rs.ac.uns.ftn.museum.journey.dto.JourneyDtos.*;
 @Service
 @Transactional
 public class SalesService {
+    private final EmailService email;
     private final EntityManager em;
     private final TicketRepository tickets;
     private final PaymentRepository payments;
@@ -29,8 +31,8 @@ public class SalesService {
     private final Clock clock;
     private static final SecureRandom RANDOM = new SecureRandom();
     public SalesService(EntityManager em, TicketRepository tickets, PaymentRepository payments, VisitRepository visits,
-            VisitorRepository visitors, DemoPaymentGateway gateway, Clock clock) {
-        this.em=em;this.tickets=tickets;this.payments=payments;this.visits=visits;this.visitors=visitors;this.gateway=gateway;this.clock=clock;
+            VisitorRepository visitors, DemoPaymentGateway gateway, Clock clock, EmailService email) {
+        this.email=email;this.em=em;this.tickets=tickets;this.payments=payments;this.visits=visits;this.visitors=visitors;this.gateway=gateway;this.clock=clock;
     }
     public TicketResponse purchase(PurchaseRequest request, boolean cashier) {
         Visitor visitor;
@@ -117,6 +119,7 @@ public class SalesService {
         var result=gateway.charge(decline);payment.setStatus(result.status());payment.setExternalReference(result.reference());
         ticket.setStatus(result.status()==PaymentStatus.USPESNA?TicketStatus.KUPLJENA:TicketStatus.OTKAZANA);
         em.flush();refreshTerm(ticket.getTerm());
+        if(ticket.getStatus()==TicketStatus.KUPLJENA)email.sendTicketPurchaseConfirmation(ticket);
     }
     private void ensureSale(ExhibitionTerm term) {
         if(term.getStatus()!=TermStatus.OTVOREN || !clock.instant().isBefore(term.getEnd())

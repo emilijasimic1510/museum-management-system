@@ -1,3 +1,4 @@
+import { translate } from './i18n';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { errorMessage } from './api';
@@ -18,7 +19,7 @@ export interface Author { id:number; firstName:string; lastName:string|null; bir
 export class CatalogResource<T> {
   readonly data=signal<T|null>(null); readonly busy=signal(false); readonly error=signal('');
   readonly notFound=signal(false); private revision=0;
-  async load(action:()=>Promise<T>, missing='Traženi podatak nije pronađen.') {
+  async load(action:()=>Promise<T>, missing=translate("uiText.the.requested.information.was.not.found")) {
     const revision=++this.revision;
     this.busy.set(true);this.error.set('');this.notFound.set(false);this.data.set(null);
     try { const data=await action();if(revision===this.revision)this.data.set(data); }

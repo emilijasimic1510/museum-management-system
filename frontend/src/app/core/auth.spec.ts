@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter, Router, RouterStateSnapshot, ActivatedRouteSnapshot } from '@angular/router';
 import { Auth, authGuard, authInterceptor, safeReturnUrl, visitorGuard, cashierGuard } from './auth';
 import { errorMessage } from './api';
+import { I18n } from './i18n';
 
 describe('Visitor session and backend boundary',()=>{
   let http:HttpClient; let requests:HttpTestingController; let auth:Auth;
@@ -14,6 +15,19 @@ describe('Visitor session and backend boundary',()=>{
   });
   afterEach(()=>{requests.verify();sessionStorage.clear();});
   async function login(){const result=auth.login('visitor@example.test','example-test-password');requests.expectOne('/api/auth/login').flush({accessToken:'test-jwt',expiresIn:1800,tokenType:'Bearer'});await result;}
+  it('sends the selected UI language on API calls including registration, but not external calls',()=>{
+    const i18n=TestBed.inject(I18n);
+    for(const language of ['en','sr'] as const){
+      i18n.language.set(language);
+      http.post('/api/auth/register',{}).subscribe();
+      const request=requests.expectOne('/api/auth/register');
+      expect(request.request.headers.get('X-Museum-Language')).toBe(language);
+      request.flush({});
+    }
+    http.get('https://example.test/content').subscribe();
+    const external=requests.expectOne('https://example.test/content');
+    expect(external.request.headers.has('X-Museum-Language')).toBe(false);external.flush({});
+  });
   it('stores login token and attaches it to a protected API request',async()=>{
     await login();expect(JSON.parse(sessionStorage.getItem('museum.session')!).token).toBe('test-jwt');
     http.get('/api/visitors/me').subscribe();const request=requests.expectOne('/api/visitors/me');expect(request.request.headers.get('Authorization')).toBe('Bearer test-jwt');request.flush({});

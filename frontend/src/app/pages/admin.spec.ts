@@ -45,7 +45,7 @@ describe('Administrator workspace',()=>{
     setup({mode:'view'});const f=TestBed.createComponent(AdminAccount);loadAccount();await render(f);
     select(f,'roleId',1);await render(f);submit(f);const grant=http.expectOne('/api/admin/accounts/3/roles/2');expect(grant.request.method).toBe('POST');grant.flush({...account,roles:['VISITOR','MANAGER']});await render(f);expect(f.nativeElement.textContent).toContain('Uloga je dodeljena');
     f.componentInstance.askRevoke('MANAGER');await render(f);http.expectNone(r=>r.method==='DELETE');f.componentInstance.applyConfirmation();const revoke=http.expectOne('/api/admin/accounts/3/roles/2');expect(revoke.request.method).toBe('DELETE');revoke.flush(null);await render(f);http.expectOne('/api/admin/accounts/3').flush(account);await render(f);expect(f.nativeElement.textContent).toContain('Uloga je uklonjena');
-    const last=[...f.nativeElement.querySelectorAll('button')].find((b:any)=>b.textContent.includes('Ukloni VISITOR')) as HTMLButtonElement;expect(last.disabled).toBe(true);f.componentInstance.askRevoke('VISITOR');f.componentInstance.applyConfirmation();http.expectNone(r=>r.method==='DELETE');
+    const last=[...f.nativeElement.querySelectorAll('button')].find((b:any)=>b.classList.contains('danger')&&b.textContent.includes('Posetilac')) as HTMLButtonElement;expect(last.disabled).toBe(true);f.componentInstance.askRevoke('VISITOR');f.componentInstance.applyConfirmation();http.expectNone(r=>r.method==='DELETE');
   });
   it('creates through the existing account API with a masked password and clears it after success',async()=>{
     setup({mode:'new'});const f=TestBed.createComponent(AdminAccount);const nav=vi.spyOn(TestBed.inject(Router),'navigate').mockResolvedValue(true);await render(f);

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
+import rs.ac.uns.ftn.museum.notification.EmailService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import rs.ac.uns.ftn.museum.catalog.domain.*;
@@ -17,6 +18,7 @@ import static rs.ac.uns.ftn.museum.journey.dto.JourneyDtos.*;
 @Service
 @Transactional
 public class VisitService {
+    private final EmailService email;
     private final EntityManager em;
     private final VisitRepository visits;
     private final ExhibitScanRepository scans;
@@ -26,8 +28,8 @@ public class VisitService {
     private final RecommendationService recommendations;
     private final Clock clock;
     public VisitService(EntityManager em,VisitRepository visits,ExhibitScanRepository scans,ExhibitionRatingRepository ratings,
-            RecommendedRouteRepository routes,RouteItemRepository items,RecommendationService recommendations,Clock clock) {
-        this.em=em;this.visits=visits;this.scans=scans;this.ratings=ratings;this.routes=routes;this.items=items;this.recommendations=recommendations;this.clock=clock;
+            RecommendedRouteRepository routes,RouteItemRepository items,RecommendationService recommendations,Clock clock,EmailService email) {
+        this.email=email;this.em=em;this.visits=visits;this.scans=scans;this.ratings=ratings;this.routes=routes;this.items=items;this.recommendations=recommendations;this.clock=clock;
     }
     @Transactional(readOnly=true) public List<VisitResponse> mine() {
         return visits.findByTicketVisitorAccountIdOrderByIdDesc(CurrentUser.id()).stream().map(JourneyMapper::visit).toList();
@@ -107,7 +109,7 @@ public class VisitService {
             throw new AccessDeniedException("Scan this participation during this visit to unlock content");
         var content=em.createQuery("select d from DigitalContent d where d.participation.id=:id order by d.version desc,d.id",DigitalContent.class)
                 .setParameter("id",participationId).getResultList().stream()
-                .map(d->new ContentResponse(d.getId(),d.getType().name(),rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion())).toList();
+                .map(d->new ContentResponse(d.getId(),d.getType().name(),d.getPath().startsWith(rs.ac.uns.ftn.museum.media.ImageStorage.PREFIX)||d.getPath().startsWith(rs.ac.uns.ftn.museum.audio.AudioStorage.PREFIX)||d.getPath().startsWith("private-text:")?"":rs.ac.uns.ftn.museum.audio.AudioStorage.publicReference(d.getPath()),d.getLanguage(),d.getVersion())).toList();
         return new ParticipationContent(p.getId(),p.getExhibit().getName(),p.getContextDescription(),content);
     }
     @Transactional(readOnly=true) public List<ContentAccess> exhibitContent(Long exhibitId) {
@@ -143,6 +145,7 @@ public class VisitService {
         visit.setExitedAt(exit.isBefore(visit.getEnteredAt())?visit.getEnteredAt():exit);visit.setStatus(VisitStatus.ZAVRSENA);
         visit.getTicket().setStatus(TicketStatus.ISKORISCENA);
         routes.findByVisitIdOrderByIdDesc(visit.getId()).forEach(r->r.setStatus(VisitStatus.ZAVRSENA));
+        email.sendVisitCompletionThankYou(visit);
     }
     private ScanResponse scanDto(ExhibitScan s,List<Recommendation> next) {
         var p=s.getParticipation();

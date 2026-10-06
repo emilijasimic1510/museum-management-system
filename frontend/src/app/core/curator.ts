@@ -1,3 +1,4 @@
+import { translate } from './i18n';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { errorMessage } from './api';
@@ -18,7 +19,7 @@ export class CuratorState {
     this.busy.set(true);this.error.set('');this.notice.set('');
     try {await action();}
     catch(e){this.error.set(e instanceof HttpErrorResponse && e.status===409
-      ? 'Izmena nije moguća: zapis već postoji ili ima povezane podatke. Uklonite zavisne veze kada je to dozvoljeno; istorija poseta se ne briše.'
+      ? translate("uiText.the.change.could.not.be.saved.the.record.already.exists.or.has.related.data.re")
       :errorMessage(e));}
     finally{this.busy.set(false);}
   }

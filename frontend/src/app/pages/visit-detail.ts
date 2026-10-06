@@ -1,39 +1,43 @@
+import {UiLabelPipe} from '../core/i18n';
+import { MediaImage } from '../shared/media-image';
 import { AudioGuide } from '../shared/audio-guide';
+import { VisitorText } from '../shared/visitor-text';
 import { Component, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { LocalDatePipe as DatePipe } from '../core/i18n';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Api, PageState } from '../core/api';
 import { Criterion, Participation, Scan, Visit, VisitRoute } from '../core/models';
 import { Feedback } from '../shared/feedback';
+import { I18n, TranslatePipe } from '../core/i18n';
 import { StatusPipe } from '../shared/status';
 import { DemoQr, scanToken } from '../core/scan';
 import { VisitRatingPanel } from '../shared/visit-rating';
-@Component({imports:[DatePipe,FormsModule,RouterLink,Feedback,StatusPipe,VisitRatingPanel,AudioGuide],template:`
-<a class="back" routerLink="/visits">← Moje posete</a><section class="page-heading tour-heading"><p class="eyebrow">VAŠ MUZEJSKI DNEVNIK</p><h1>Poseta #{{id}}</h1>@if(visit();as v){<h2>{{v.exhibitionName}}</h2><p>Ulazak {{v.enteredAt|date:'dd.MM.yyyy. HH:mm'}} · <span class="badge">{{v.status|status}}</span></p>@if(v.exitedAt){<p>Izlazak {{v.exitedAt|date:'dd.MM.yyyy. HH:mm'}}</p>}}</section>
-<app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" /><button class="text-button refresh" [disabled]="busy()" (click)="load()">{{error()?'Pokušaj ponovo':'Osveži posetu ↻'}}</button>
+@Component({imports:[UiLabelPipe,MediaImage,DatePipe,FormsModule,RouterLink,Feedback,StatusPipe,VisitRatingPanel,AudioGuide,VisitorText,TranslatePipe],template:`
+<a class="back" routerLink="/visits">{{'uiText.my.visits'|t}}</a><section class="page-heading tour-heading"><p class="eyebrow">{{'nav.visits'|t}}</p><h1>{{'uiText.visit'|t}}{{id}}</h1>@if(visit();as v){<h2>{{v.exhibitionName}}</h2><p>{{'uiText.entry'|t}} {{v.enteredAt|date:'dd.MM.yyyy. HH:mm'}} · <span class="badge">{{v.status|status}}</span></p>@if(v.exitedAt){<p>{{'uiText.exit'|t}} {{v.exitedAt|date:'dd.MM.yyyy. HH:mm'}}</p>}}</section>
+<app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" /><button class="text-button refresh" [disabled]="busy()" (click)="load()">{{error()?('ui.retry'|t):('uiText.refresh.visit'|t)}}</button>
 @if(visit()?.status==='AKTIVNA'){
-<section class="panel"><h2>Završetak posete</h2><p>Završetkom čuvate istoriju obilaska i možete oceniti izložbu. Nova skeniranja više neće biti dostupna.</p>
-@if(confirmFinish()){<p role="status">Želite li da završite ovu posetu?</p><div class="visit-actions"><button class="button" [disabled]="busy()" (click)="finish()">Potvrdi završetak</button><button class="button secondary" [disabled]="busy()" (click)="confirmFinish.set(false)">Nastavi obilazak</button></div>}
-@else{<button class="button secondary" [disabled]="busy()" (click)="confirmFinish.set(true)">Završi posetu</button>}</section>
-<section class="panel"><h2>Skeniraj eksponat</h2><p>Kamerom telefona skenirajte QR oznaku postavke i otvorite link, ili unesite njen token ili URL u formu.</p><a routerLink="/scan">Otvori izbor aktivne posete</a>
-@if(demoEntries().length){<details><summary>Demo skeniranje · samo lokalno</summary><p>Eksponati ove izložbe:</p>@for(d of demoEntries();track d.participationId){<button class="button secondary small" [disabled]="busy()" (click)="performScan(d.token)">{{d.name}}</button>}</details>}</section>}
-@if(lastScan();as s){<section class="panel scanned-exhibit" aria-live="polite"><p class="eyebrow">SKENIRANI EKSPONAT</p><h2>{{s.participation.name}}</h2><p>{{s.participation.contextDescription}}</p>
+<section class="panel"><h2>{{'visitor.finishVisit'|t}}</h2><p>{{'visitor.finishDescription'|t}}</p>
+@if(confirmFinish()){<p role="status">{{'visitor.confirmFinish'|t}}</p><div class="visit-actions"><button class="button" [disabled]="busy()" (click)="finish()">{{'visitor.confirm'|t}}</button><button class="button secondary" [disabled]="busy()" (click)="confirmFinish.set(false)">{{'visitor.continue'|t}}</button></div>}
+@else{<button class="button secondary" [disabled]="busy()" (click)="confirmFinish.set(true)">{{'visitor.finish'|t}}</button>}</section>
+<section class="panel"><h2>{{'visitor.scanExhibitTitle'|t}}</h2><p>{{'uiText.scan.the.installation.s.qr.code.with.your.phone.camera.and.open.the.link.or.en'|t}}</p><a routerLink="/scan">{{'visitor.openScan'|t}}</a>
+@if(demoEntries().length){<details><summary>{{'uiText.demo.scanning.local.only'|t}}</summary><p>{{'uiText.exhibits.in.this.exhibition'|t}}</p>@for(d of demoEntries();track d.participationId){<button class="button secondary small" [disabled]="busy()" (click)="performScan(d.token)">{{d.name}}</button>}</details>}</section>}
+@if(lastScan();as s){<section class="panel scanned-exhibit" aria-live="polite"><p class="eyebrow">{{'uiText.scanned.exhibit'|t}}</p><h2>{{s.participation.name}}</h2><app-visitor-text [visitId]="id" [participation]="s.participation" />
 @if(visit()?.status==='AKTIVNA'){<app-audio-guide [visitId]="id" [participation]="s.participation" />}
-@for(c of s.participation.content;track c.id){<p>{{c.type}} · {{c.language}} · verzija {{c.version}}
-@if(contentLink(c.path);as href){<a [href]="href" target="_blank" rel="noopener noreferrer">Otvori sadržaj</a>}</p>}
-@for(n of s.next;track n.participationId){<h3>Sledeći eksponat: {{n.name}}</h3><p>{{n.explanation}}</p>}@empty{<p>Obišli ste sve trenutno dostupne eksponate.</p>}
-<button class="button" [disabled]="busy()||!s.next.length||visit()?.status!=='AKTIVNA'" (click)="generateCombined()">Generiši rutu</button></section>}
-@if(visit();as v){<div class="detail-layout"><section><div class="panel"><h2>Skenirani eksponati</h2>@for(s of scans();track s.id){<div class="scan-row"><span class="step">{{ $index+1 }}</span><div><strong>{{names()[s.participationId]||'Eksponat · učešće #'+s.participationId}}</strong><small>{{s.scannedAt|date:'dd.MM.yyyy. HH:mm'}} @if(s.durationSeconds!==null){ · {{s.durationSeconds}} s}</small></div></div>}@empty{<p class="empty-inline">Još nema skeniranih eksponata za ovu posetu.</p>}</div>
-<div class="panel"><h2>Preporučene rute</h2>@for(r of routes();track r.id){<div class="route-block"><div class="card-meta"><strong>{{r.criterion|status}}</strong><span class="badge">{{r.status|status}}</span></div><p class="muted small-text">{{r.generatedAt|date:'dd.MM.yyyy. HH:mm'}}</p><ol class="route-list">@for(item of r.items;track item.position){<li><span class="step" [class.done]="item.visited">{{item.visited?'✓':item.position}}</span><div><strong>{{names()[item.participationId]||'Eksponat · učešće #'+item.participationId}}</strong><p>{{item.explanation}}</p><small>{{item.visited?'Posećen':'Za istraživanje'}}</small></div></li>}</ol></div>}@empty{<p class="empty-inline">Preporučena ruta još nije kreirana.</p>}</div></section>
-<aside>@if(v.status==='AKTIVNA'){<div class="panel scan-panel"><p class="eyebrow">OTKRIJTE SLEDEĆI EKSPONAT</p><h2>Unesite QR token</h2><form #scanForm="ngForm" (ngSubmit)="scan(scanForm)"><label>Token eksponata <span class="required-mark" aria-hidden="true">*</span><input name="qr" [(ngModel)]="qr" required placeholder="Token sa oznake eksponata" autocomplete="off"></label><p class="muted small-text">Unesite tekst QR tokena eksponata. Token ulaznice se koristi samo na ulazu.</p><button class="button full" [disabled]="busy()||scanForm.invalid">Evidentiraj skeniranje</button></form></div><div class="panel"><h2>Vaša ruta</h2><label>Kriterijum<select [(ngModel)]="criterion"><option value="KOMBINACIJA">Kombinovana preporuka</option><option value="INTERESOVANJA">Interesovanja</option><option value="BLIZINA">Blizina</option><option value="POPULARNOST">Popularnost</option></select></label><button class="button secondary full" (click)="generate()" [disabled]="busy()">Kreiraj preporučenu rutu</button></div>}
-@else if(v.status==='ZAVRSENA'){<div class="panel"><h2>Poseta je završena</h2><p>Sačuvani su vaši skenirani eksponati i istorija ruta.</p><app-visit-rating [visitId]="v.id" /><a routerLink="/recommendations">Pronađite sledeću izložbu ↗</a></div>}</aside></div>}
+@for(c of s.participation.content;track c.id){@if(c.type==='SLIKA'&&!c.path&&visit()?.status==='AKTIVNA'){<app-media-image [path]="'/visits/'+id+'/content/'+s.participation.participationId+'/images/'+c.id" [protected]="true" [alt]="s.participation.name" [contain]="true" />}<p>{{c.type|uiLabel:'content'}} · {{c.language|uiLabel:'language'}} {{'uiText.version'|t}} {{c.version}}
+@if(contentLink(c.path);as href){<a [href]="href" target="_blank" rel="noopener noreferrer">{{'uiText.open.content'|t}}</a>}</p>}
+@for(n of s.next;track n.participationId){<h3>{{'uiText.next.exhibit'|t}} {{n.name}}</h3><p>{{n.explanation}}</p>}@empty{<p>{{'uiText.you.have.visited.all.currently.available.exhibits'|t}}</p>}
+<button class="button" [disabled]="busy()||!s.next.length||visit()?.status!=='AKTIVNA'" (click)="generateCombined()">{{'uiText.generate.route'|t}}</button></section>}
+@if(visit();as v){<div class="detail-layout"><section><div class="panel"><h2>{{'visitor.scanned'|t}}</h2>@for(s of scans();track s.id){<div class="scan-row"><span class="step">{{ $index+1 }}</span><div><strong>{{names()[s.participationId]||('uiText.exhibit.installation'|t)+s.participationId}}</strong><small>{{s.scannedAt|date:'dd.MM.yyyy. HH:mm'}} @if(s.durationSeconds!==null){ · {{s.durationSeconds}} s}</small></div></div>}@empty{<p class="empty-inline">{{'visitor.noScans'|t}}</p>}</div>
+<div class="panel"><h2>{{'visitor.routes'|t}}</h2>@for(r of routes();track r.id){<div class="route-block"><div class="card-meta"><strong>{{r.criterion|status}}</strong><span class="badge">{{r.status|status}}</span></div><p class="muted small-text">{{r.generatedAt|date:'dd.MM.yyyy. HH:mm'}}</p><ol class="route-list">@for(item of r.items;track item.position){<li><span class="step" [class.done]="item.visited">{{item.visited?'✓':item.position}}</span><div><strong>{{names()[item.participationId]||('uiText.exhibit.installation'|t)+item.participationId}}</strong><p>{{item.explanation}}</p><small>{{item.visited?('uiText.visited'|t):('uiText.to.explore'|t)}}</small></div></li>}</ol></div>}@empty{<p class="empty-inline">{{'visitor.noRoutes'|t}}</p>}</div></section>
+<aside>@if(v.status==='AKTIVNA'){<div class="panel scan-panel"><p class="eyebrow">{{'uiText.discover.the.next.exhibit'|t}}</p><h2>{{'uiText.enter.qr.token'|t}}</h2><form #scanForm="ngForm" (ngSubmit)="scan(scanForm)"><label>{{'uiText.exhibit.token'|t}} <span class="required-mark" aria-hidden="true">*</span><input name="qr" [(ngModel)]="qr" required [attr.placeholder]="'uiText.token.from.the.exhibit.label'|t" autocomplete="off"></label><p class="muted small-text">{{'uiText.enter.the.exhibit.qr.token.the.ticket.token.is.only.used.at.the.entrance'|t}}</p><button class="button full" [disabled]="busy()||scanForm.invalid">{{'uiText.record.scan'|t}}</button></form></div><div class="panel"><h2>{{'uiText.your.route'|t}}</h2><label>{{'uiText.criterion'|t}}<select [(ngModel)]="criterion"><option value="KOMBINACIJA">{{'uiText.combined.recommendation'|t}}</option><option value="INTERESOVANJA">{{'status.INTERESOVANJA'|t}}</option><option value="BLIZINA">{{'status.BLIZINA'|t}}</option><option value="POPULARNOST">{{'status.POPULARNOST'|t}}</option></select></label><button class="button secondary full" (click)="generate()" [disabled]="busy()">{{'uiText.create.recommended.route'|t}}</button></div>}
+@else if(v.status==='ZAVRSENA'){<div class="panel"><h2>{{'uiText.visit.finished'|t}}</h2><p>{{'uiText.your.scanned.exhibits.and.route.history.have.been.saved'|t}}</p><app-visit-rating [visitId]="v.id" /><a routerLink="/recommendations">{{'uiText.find.your.next.exhibition'|t}}</a></div>}</aside></div>}
 `})
 export class VisitDetailPage extends PageState {
   private route=inject(ActivatedRoute);
   demoEntries=signal<DemoQr[]>([]);lastScan=signal<Scan|null>(null);
   confirmFinish=signal(false);
-  private api=inject(Api);id=Number(inject(ActivatedRoute).snapshot.paramMap.get('id'));
+  private api=inject(Api);private i18n=inject(I18n);id=Number(inject(ActivatedRoute).snapshot.paramMap.get('id'));
   visit=signal<Visit|null>(null);scans=signal<Scan[]>([]);routes=signal<VisitRoute[]>([]);names=signal<Record<number,string>>({});qr='';criterion:Criterion='KOMBINACIJA';
   constructor(){super();this.qr=this.route.snapshot.queryParamMap.get('token')||'';this.load();}
   private async refresh(){const [v,s,r]=await Promise.all([this.api.get<Visit>('/visits/'+this.id,10000),this.api.get<Scan[]>(`/visits/${this.id}/scans`,10000),this.api.get<VisitRoute[]>(`/visits/${this.id}/routes`,10000)]);this.visit.set(v);this.scans.set(s);this.routes.set(r);
@@ -44,19 +48,19 @@ export class VisitDetailPage extends PageState {
   finish(){if(this.visit()?.status!=='AKTIVNA'||!this.confirmFinish()||this.busy())return;
     void this.run(async()=>{const closed=await this.api.post<Visit>(`/visits/${this.id}/finish`,{},10000);
       this.visit.set(closed);this.lastScan.set(null);this.demoEntries.set([]);this.confirmFinish.set(false);
-      this.notice.set('Poseta je završena. Sada možete oceniti izložbu.');await this.refresh();
+      this.notice.set(this.i18n.t('visitor.ratingSaved'));await this.refresh();
     });
   }
   load(){this.demoEntries.set([]);void this.run(async()=>{await this.refresh();}).then(()=>{if(this.visit()?.status==='AKTIVNA')void this.loadDemo();});}
   private async loadDemo(){
     try {if(!(await this.api.get<{enabled:boolean}>('/local-demo/enabled',10000)).enabled)return;
       const entries=await this.api.get<DemoQr[]>(`/local-demo/visits/${this.id}`,10000);this.demoEntries.set(entries);
-    } catch {this.notice.set('Demo primeri nisu dostupni. Možete uneti QR token eksponata.');}
+    } catch {this.notice.set(this.i18n.t('visitor.audioUnavailable'));}
   }
   scan(form:NgForm){if(form.invalid||!this.qr.trim())return;this.performScan(this.qr);}
   performScan(value:string){let token:string;try{token=scanToken(value);}catch(e){this.error.set((e as Error).message);return;}
-    void this.run(async()=>{this.lastScan.set(null);const result=await this.api.post<Scan>(`/visits/${this.id}/scans`,{qrToken:token},10000);this.lastScan.set(result);this.qr='';await this.refresh();this.notice.set('Skeniranje je sačuvano.');});}
+    void this.run(async()=>{this.lastScan.set(null);const result=await this.api.post<Scan>(`/visits/${this.id}/scans`,{qrToken:token},10000);this.lastScan.set(result);this.qr='';await this.refresh();this.notice.set(this.i18n.t('visitor.scanSaved'));});}
   generateCombined(){this.criterion='KOMBINACIJA';this.generate();}
   contentLink(path:string):string|null {try {if(!path)return null;const url=new URL(path,window.location.origin+'/');return ['https:','http:'].includes(url.protocol)?url.href:null;}catch{return null;}}
-  generate(){void this.run(async()=>{await this.api.post<VisitRoute>(`/visits/${this.id}/routes`,{criterion:this.criterion},10000);await this.refresh();this.notice.set('Preporučena ruta je kreirana.');});}
+  generate(){void this.run(async()=>{await this.api.post<VisitRoute>(`/visits/${this.id}/routes`,{criterion:this.criterion},10000);await this.refresh();this.notice.set(this.i18n.t('visitor.routeCreated'));});}
 }

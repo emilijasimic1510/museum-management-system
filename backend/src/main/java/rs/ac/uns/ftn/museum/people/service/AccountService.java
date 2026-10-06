@@ -3,6 +3,7 @@ package rs.ac.uns.ftn.museum.people.service;
 import java.util.*;
 import java.time.*;
 import org.springframework.stereotype.Service;
+import rs.ac.uns.ftn.museum.notification.EmailService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Sort;
 import rs.ac.uns.ftn.museum.people.domain.*;
@@ -16,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 @Service
 @Transactional
 public class AccountService {
+    private final EmailService email;
     private final AccountRepository accounts;
     private final AccountRoleRepository assignments;
     private final RoleRepository roles;
@@ -25,8 +27,8 @@ public class AccountService {
     private final Clock clock;
     private final String dummyHash;
     public AccountService(AccountRepository accounts, AccountRoleRepository assignments, RoleRepository roles,
-            VisitorRepository visitors, PasswordEncoder encoder, TokenService tokens, Clock clock) {
-        this.accounts=accounts;this.assignments=assignments;this.roles=roles;this.visitors=visitors;
+            VisitorRepository visitors, PasswordEncoder encoder, TokenService tokens, Clock clock, EmailService email) {
+        this.email=email;this.accounts=accounts;this.assignments=assignments;this.roles=roles;this.visitors=visitors;
         this.encoder=encoder;this.tokens=tokens;this.clock=clock;this.dummyHash=encoder.encode(UUID.randomUUID().toString());
     }
     public AccountResponse register(RegisterRequest r) {
@@ -39,6 +41,7 @@ public class AccountService {
         assign(a,role,null);
         Visitor v=new Visitor();v.setAccount(a);v.setFirstName(r.firstName());v.setLastName(r.lastName());
         v.setPhone(r.phone());v.setRecommendationsConsent(r.recommendationsConsent());visitors.save(v);
+        this.email.sendRegistrationConfirmation(a);
         return response(a);
     }
     public TokenResponse login(LoginRequest r) {

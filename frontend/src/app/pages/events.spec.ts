@@ -5,6 +5,7 @@ import { ActivatedRouteSnapshot, provideRouter, Router, RouterStateSnapshot, Url
 import { RouterTestingHarness } from '@angular/router/testing';
 import { NgForm } from '@angular/forms';
 import { Auth, authInterceptor, guideGuard } from '../core/auth';
+import { I18n } from '../core/i18n';
 import { routes } from '../routes';
 import { recordRouteReuseProvider } from '../core/route-reuse';
 import { EventState, MuseumEvent, registrationOpen } from '../core/events';
@@ -20,7 +21,7 @@ describe('Guide and visitor events',()=>{
   const form={invalid:false} as NgForm;
   const event:MuseumEvent={id:7,exhibitionId:2,guideId:8,name:'Razgovor o umetnosti',type:'PREDAVANJE',status:'PLANIRAN',start:'2099-01-01T10:00:00Z',end:'2099-01-01T11:00:00Z',capacity:2,registeredCount:1,language:'sr'};
   const guide={id:8,firstName:'Demo',lastName:'Vodič',primaryLanguage:'sr'};
-  beforeEach(()=>{sessionStorage.clear();TestBed.configureTestingModule({providers:[recordRouteReuseProvider,provideRouter(routes),provideHttpClient(withInterceptors([authInterceptor])),provideHttpClientTesting()]});http=TestBed.inject(HttpTestingController);});
+  beforeEach(()=>{sessionStorage.clear();localStorage.clear();TestBed.configureTestingModule({providers:[recordRouteReuseProvider,provideRouter(routes),provideHttpClient(withInterceptors([authInterceptor])),provideHttpClientTesting()]});TestBed.inject(I18n).setLanguage('sr');http=TestBed.inject(HttpTestingController);});
   afterEach(()=>{http.verify();sessionStorage.clear();});
   function role(value:string){const a=TestBed.inject(Auth);a.session.set({token:'test-only',expiresAt:Date.now()+60000});a.currentAccount.set({id:1,email:'guide@example.test',roles:[value],active:true,registeredAt:'',lastLogin:null});}
   async function settle(h:RouterTestingHarness){await vi.waitFor(()=>{for(const node of h.fixture.debugElement.queryAll(n=>n.componentInstance instanceof EventState||n.componentInstance instanceof AuthPage))expect(node.componentInstance.busy()).toBe(false);});await h.fixture.whenStable();h.detectChanges();}

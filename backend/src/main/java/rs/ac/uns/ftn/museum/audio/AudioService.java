@@ -11,12 +11,20 @@ import rs.ac.uns.ftn.museum.journey.service.VisitService;
 @Service
 public class AudioService {
     private final ExhibitParticipationRepository participations;private final DigitalContentRepository contents;
-    private final TtsService tts;private final AudioStorage storage;private final Clock clock;private final VisitService visits;
-    public AudioService(ExhibitParticipationRepository p,DigitalContentRepository c,TtsService t,AudioStorage s,Clock clock,VisitService v){participations=p;contents=c;tts=t;storage=s;this.clock=clock;visits=v;}
+    private final TtsService tts;private final AudioStorage storage;private final Clock clock;private final VisitService visits; private final rs.ac.uns.ftn.museum.text.TextService texts;
+    public AudioService(ExhibitParticipationRepository p,DigitalContentRepository c,TtsService t,AudioStorage s,Clock clock,VisitService v){this(p,c,t,s,clock,v,null);}
+    @org.springframework.beans.factory.annotation.Autowired
+    public AudioService(ExhibitParticipationRepository p,DigitalContentRepository c,TtsService t,AudioStorage s,Clock clock,VisitService v,rs.ac.uns.ftn.museum.text.TextService x){participations=p;contents=c;tts=t;storage=s;this.clock=clock;visits=v;texts=x;}
     @Transactional public DigitalContentResponse generate(Long id,String language){
-        if(!"sr".equals(language))throw new InvalidRequestException("Podržan je jezik sr (srpski).");
+        if(!"sr".equals(language)&&!"en".equals(language))throw new InvalidRequestException("Podržani su jezici sr i en.");
         var p=participations.findLockedById(id).orElseThrow(()->new NotFoundException("Participation not found"));
-        if(p.getContextDescription()==null||p.getContextDescription().isBlank())throw new InvalidRequestException("Prvo unesite kontekstualni opis ove postavke.");
+        String spoken=p.getContextDescription();
+        if(texts!=null){
+            var translated=texts.curatorIfPresent(id,language);
+            if(translated.isPresent()) spoken=translated.get().text();
+            else if("en".equals(language)) spoken=null;
+        }
+        if(spoken==null||spoken.isBlank())throw new InvalidRequestException("Prvo unesite tekstualni sadržaj za izabrani jezik.");
         int version=contents.findByParticipationIdOrderByVersionDescId(id).stream()
             .filter(d->d.getType()==ContentType.AUDIO&&language.equals(d.getLanguage())).mapToInt(DigitalContent::getVersion).max().orElse(0)+1;
         String ref=storage.reference(id,language,version);
@@ -24,7 +32,7 @@ public class AudioService {
             @Override public void afterCompletion(int status){if(status!=STATUS_COMMITTED)storage.delete(ref);}
         });
         try {
-            var file=storage.prepare(ref);tts.generate(p.getContextDescription(),language,file);AudioStorage.validateWav(file);
+            var file=storage.prepare(ref);tts.generate(spoken,language,file);AudioStorage.validateWav(file);
             var d=new DigitalContent();d.setParticipation(p);d.setType(ContentType.AUDIO);d.setPath(ref);d.setLanguage(language);
             d.setVersion(version);d.setAutomaticallyGenerated(true);d.setCreatedAt(clock.instant());contents.saveAndFlush(d);
             return new DigitalContentResponse(d.getId(),id,d.getType(),"",language,version,true,d.getCreatedAt());

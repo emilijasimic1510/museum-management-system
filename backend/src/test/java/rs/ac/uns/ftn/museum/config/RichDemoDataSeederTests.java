@@ -19,6 +19,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RichDemoDataSeederTests extends PostgresTestBase {
     @Autowired JdbcTemplate db;
     @Autowired RichDemoDataSeeder seed;
+    @Autowired LocalImageSeeder imageSeed;
+    @Autowired rs.ac.uns.ftn.museum.media.ImageStorage imageStorage;
+    @org.junit.jupiter.api.io.TempDir static Path imageRoot;
+    @org.springframework.test.context.DynamicPropertySource static void imageProperties(org.springframework.test.context.DynamicPropertyRegistry r){r.add("museum.image.storage-path",()->imageRoot.toString());}
     @Autowired DemoDataSeeder base;
     @Autowired PasswordEncoder encoder;
     @Autowired PlatformTransactionManager transactions;
@@ -26,6 +30,18 @@ class RichDemoDataSeederTests extends PostgresTestBase {
     private static final String RICH_SHOW = "select distinct izlozba_id from ucesce_eksponata_na_izlozbi p join eksponat e on e.id=p.eksponat_id where e.inventarski_broj like 'DEMO-RICH-EX-%'";
     private int count(String sql) { return db.queryForObject(sql, Integer.class); }
     private void zero(String sql) { assertThat(count(sql)).as(sql).isZero(); }
+
+    @Test void imageSeedIsIdempotentAndPreservesCuratorCover() {
+        int before=count("select count(*) from digitalni_sadrzaj where tip_sadrzaja='SLIKA'");
+        long id=db.queryForObject("select min(id) from eksponat where inventarski_broj like 'DEMO-RICH-EX-%'",Long.class);
+        String key="exhibit-"+id+".png";
+        byte[] original=imageStorage.read(key),edited=LocalImageSeeder.illustration(999);
+        try{imageStorage.write(key,edited);imageSeed.run(null);imageSeed.run(null);
+            assertThat(imageStorage.read(key)).isEqualTo(edited);
+            assertThat(count("select count(*) from digitalni_sadrzaj where tip_sadrzaja='SLIKA'")).isEqualTo(before);
+            assertThat(before).isGreaterThanOrEqualTo(96);
+        }finally{imageStorage.write(key,original);}
+    }
 
     @Test void collectionHasConnectedRealisticMinimumsAndUniqueTokens() {
         assertThat(count("select count(*) from muzej")).isGreaterThanOrEqualTo(4);
@@ -56,7 +72,7 @@ class RichDemoDataSeederTests extends PostgresTestBase {
             """);
     }
     @Test void textReferencesResolveToActualUtf8AssetsWithoutFakeAudio() throws Exception {
-        var rows = db.queryForList("select d.* from digitalni_sadrzaj d join ucesce_eksponata_na_izlozbi p on p.id_ucesca=d.ucesce_id where p.izlozba_id in (" + RICH_SHOW + ")");
+        var rows = db.queryForList("select d.* from digitalni_sadrzaj d join ucesce_eksponata_na_izlozbi p on p.id_ucesca=d.ucesce_id where d.tip_sadrzaja='TEKST' and p.izlozba_id in (" + RICH_SHOW + ")");
         assertThat(rows).hasSize(96);
         for (var row : rows) {
             assertThat(row.get("tip_sadrzaja")).isEqualTo("TEKST");

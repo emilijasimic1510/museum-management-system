@@ -12,7 +12,7 @@ public class AudioStorage {
     public AudioStorage(@Value("${museum.audio.storage-path:./runtime/audio}") String root){this.root=Path.of(root).toAbsolutePath().normalize();}
     public String reference(long id,String language,int version){return PREFIX+id+"-"+language+"-v"+version+"-"+UUID.randomUUID()+".wav";}
     public Path resolve(String reference) {
-        if(reference==null || !reference.matches("private-audio:[0-9]+-sr-v[0-9]+-[a-f0-9-]{36}\\.wav"))throw new AudioException("Neispravna interna audio referenca.");
+        if(reference==null || !reference.matches("private-audio:[0-9]+-(sr|en)-v[0-9]+-[a-f0-9-]{36}\\.wav"))throw new AudioException("Neispravna interna audio referenca.");
         Path path=root.resolve(reference.substring(PREFIX.length())).normalize();
         if(!path.getParent().equals(root)||Files.isSymbolicLink(path))throw new AudioException("Neispravna interna audio referenca.");
         return path;

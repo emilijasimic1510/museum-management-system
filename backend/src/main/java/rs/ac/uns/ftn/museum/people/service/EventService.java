@@ -3,6 +3,7 @@ package rs.ac.uns.ftn.museum.people.service;
 import java.util.*;
 import java.time.*;
 import org.springframework.stereotype.Service;
+import rs.ac.uns.ftn.museum.notification.EmailService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Sort;
 import rs.ac.uns.ftn.museum.people.domain.*;
@@ -16,14 +17,15 @@ import org.springframework.security.access.AccessDeniedException;
 @Service
 @Transactional
 public class EventService {
+    private final EmailService email;
     private final EventRepository events;
     private final ExhibitionRepository exhibitions;
     private final GuideRepository guides;
     private final VisitorRepository visitors;
     private final EventRegistrationRepository registrations;
     private final Clock clock;
-    public EventService(EventRepository events,ExhibitionRepository exhibitions,GuideRepository guides,VisitorRepository visitors,EventRegistrationRepository registrations,Clock clock) {
-        this.events=events;this.exhibitions=exhibitions;this.guides=guides;this.visitors=visitors;this.registrations=registrations;this.clock=clock;
+    public EventService(EventRepository events,ExhibitionRepository exhibitions,GuideRepository guides,VisitorRepository visitors,EventRegistrationRepository registrations,Clock clock,EmailService email) {
+        this.email=email;this.events=events;this.exhibitions=exhibitions;this.guides=guides;this.visitors=visitors;this.registrations=registrations;this.clock=clock;
     }
     @Transactional(readOnly=true) public List<EventResponse> list() { return events.findAll(Sort.by("id")).stream().map(this::response).toList(); }
     @Transactional(readOnly=true) public EventResponse get(Long id) { return response(require(id)); }
@@ -41,13 +43,16 @@ public class EventService {
         if (r!=null && r.getStatus()!=RegistrationStatus.OTKAZAN) throw new ConflictException("Already registered");
         ensureRegistrationOpen(e,count(eventId));
         if(r==null) r=new EventRegistration();r.setId(id);r.setVisitor(v);r.setEvent(e);r.setRegisteredAt(clock.instant());r.setStatus(RegistrationStatus.PRIJAVLJEN);
-        registrations.saveAndFlush(r);refreshCapacityStatus(e);return PeopleMapper.registration(r);
+        registrations.saveAndFlush(r);refreshCapacityStatus(e);
+        email.sendEventRegistrationConfirmation(r);return PeopleMapper.registration(r);
     }
     public void cancel(Long eventId) {
         Event e=lock(eventId);Visitor v=currentVisitor();
         EventRegistration r=registrations.findById(new EventRegistrationId(v.getId(),eventId)).orElseThrow(() -> new NotFoundException("Registration not found"));
         if(r.getStatus()==RegistrationStatus.PRISUSTVOVAO)throw new ConflictException("Attendance history cannot be cancelled by visitor");
+        boolean changed=r.getStatus()!=RegistrationStatus.OTKAZAN;
         r.setStatus(RegistrationStatus.OTKAZAN);registrations.flush();refreshCapacityStatus(e);
+        if(changed)email.sendEventCancellationConfirmation(r);
     }
     @Transactional(readOnly=true) public List<ManagedRegistrationResponse> registrations(Long id) {
         Event e=require(id);canManage(e);return registrations.findByEventId(id).stream()
@@ -58,7 +63,12 @@ public class EventService {
         Event e=lock(eventId);canManage(e);
         EventRegistration r=registrations.findById(new EventRegistrationId(visitorId,eventId)).orElseThrow(() -> new NotFoundException("Registration not found"));
         if(r.getStatus()==RegistrationStatus.OTKAZAN && request.status()!=RegistrationStatus.OTKAZAN) ensureRegistrationOpen(e,count(eventId));
-        r.setStatus(request.status());registrations.flush();refreshCapacityStatus(e);return PeopleMapper.registration(r);
+        boolean cancelled=r.getStatus()!=RegistrationStatus.OTKAZAN && request.status()==RegistrationStatus.OTKAZAN;
+        boolean restored=r.getStatus()==RegistrationStatus.OTKAZAN && request.status()==RegistrationStatus.PRIJAVLJEN;
+        r.setStatus(request.status());registrations.flush();refreshCapacityStatus(e);
+        if(cancelled)email.sendEventCancellationConfirmation(r);
+        if(restored)email.sendEventRegistrationConfirmation(r);
+        return PeopleMapper.registration(r);
     }
     public static void ensureOpen(Event e,long occupied) {
         if(e.getStatus()!=EventStatus.PLANIRAN || occupied>=e.getCapacity())throw new ConflictException("Event is closed or full");

@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { qrBoardGuard } from './core/qr-board';
 import { visitorGuard, cashierGuard, curatorGuard, guideGuard } from './core/auth';
 import { demoBoardGuard } from './core/scan';
 import { collectionGuard } from './core/collection-management';
 import { managerGuard } from './core/manager';
 import { adminGuard } from './core/admin';
 export const routes:Routes=[
+  {path:'staff/qr-board',canActivate:[qrBoardGuard],loadComponent:()=>import('./pages/qr-board').then(m=>m.QrBoard)},
   {path:'admin',canActivate:[adminGuard],canActivateChild:[adminGuard],children:[
     {path:'',pathMatch:'full',loadComponent:()=>import('./pages/admin-overview').then(m=>m.AdminOverview)},
     {path:'profile',data:{profile:true},loadComponent:()=>import('./pages/admin-overview').then(m=>m.AdminOverview)},
@@ -57,6 +59,7 @@ export const routes:Routes=[
   {path:'authors',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/authors').then(m=>m.AuthorsPage)},
   {path:'authors/:id',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/author-detail').then(m=>m.AuthorDetailPage)},
   {path:'scan',canActivate:[visitorGuard],loadComponent:()=>import('./pages/scan').then(m=>m.ScanPage)},
+  {path:'scan/:token',canActivate:[visitorGuard],loadComponent:()=>import('./pages/scan').then(m=>m.ScanPage)},
   {path:'demo-qr',canActivate:[demoBoardGuard],loadComponent:()=>import('./pages/demo-qr-board').then(m=>m.DemoQrBoard)},
   {path:'',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/catalog').then(m=>m.CatalogPage)},
   {path:'exhibitions/:id',canActivate:[visitorGuard],data:{publicCatalog:true},loadComponent:()=>import('./pages/exhibition').then(m=>m.ExhibitionPage)},

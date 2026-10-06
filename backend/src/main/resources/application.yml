@@ -1,4 +1,10 @@
 museum:
+  mail:
+    enabled: ${MUSEUM_MAIL_ENABLED:false}
+    from: ${MUSEUM_MAIL_FROM:museum@localhost}
+  image:
+    storage-path: ${MUSEUM_IMAGE_STORAGE_PATH:./runtime/images}
+    max-bytes: ${MUSEUM_IMAGE_MAX_BYTES:5242880}
   tts:
     provider: ${MUSEUM_TTS_PROVIDER:espeak}
     espeak-path: ${MUSEUM_TTS_ESPEAK_PATH:espeak-ng}
@@ -10,8 +16,28 @@ museum:
     piper-model: ${MUSEUM_TTS_PIPER_MODEL:}
   audio:
     storage-path: ${MUSEUM_AUDIO_STORAGE_PATH:./runtime/audio}
+  text:
+    storage-path: ${MUSEUM_TEXT_STORAGE_PATH:./runtime/text}
 
 spring:
+  mail:
+    host: ${MUSEUM_MAIL_HOST:localhost}
+    port: ${MUSEUM_MAIL_PORT:1025}
+    username: ${MUSEUM_MAIL_USERNAME:}
+    password: ${MUSEUM_MAIL_PASSWORD:}
+    test-connection: false
+    properties:
+      mail.smtp.auth: ${MUSEUM_MAIL_AUTH:false}
+      mail.smtp.starttls.enable: ${MUSEUM_MAIL_STARTTLS:false}
+      mail.smtp.starttls.required: ${MUSEUM_MAIL_STARTTLS:false}
+      mail.smtp.ssl.enable: ${MUSEUM_MAIL_SSL:false}
+      mail.smtp.connectiontimeout: ${MUSEUM_MAIL_CONNECTION_TIMEOUT_MS:3000}
+      mail.smtp.timeout: ${MUSEUM_MAIL_READ_TIMEOUT_MS:5000}
+      mail.smtp.writetimeout: ${MUSEUM_MAIL_WRITE_TIMEOUT_MS:5000}
+  servlet:
+    multipart:
+      max-file-size: ${MUSEUM_IMAGE_MAX_BYTES:5242880}B
+      max-request-size: 6MB
   application:
     name: museum-backend
   config:

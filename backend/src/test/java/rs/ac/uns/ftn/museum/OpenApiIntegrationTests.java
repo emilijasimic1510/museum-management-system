@@ -32,9 +32,13 @@ class OpenApiIntegrationTests extends PostgresTestBase {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         mappings.getHandlerMethods().forEach((mapping, handler) -> mapping.getPatternValues().stream()
                 .filter(path -> path.startsWith("/api/"))
-                .forEach(path -> mapping.getMethodsCondition().getMethods().forEach(method ->
-                        assertThat(spec.path("paths").path(path).has(method.name().toLowerCase()))
-                                .as("%s %s is documented", method, path).isTrue())));
+                .forEach(path -> mapping.getMethodsCondition().getMethods().forEach(method -> {
+                    // Spring MVC keeps regex constraints in its mapping, while SpringDoc
+                    // emits the OpenAPI placeholder without the constraint.
+                    String documentedPath = path.replaceAll("\\{([^}:]+):[^}]+}", "{$1}");
+                    assertThat(spec.path("paths").path(documentedPath).has(method.name().toLowerCase()))
+                            .as("%s %s is documented", method, documentedPath).isTrue();
+                })));
         assertThat(spec.at("/components/securitySchemes/bearerAuth/scheme").asText()).isEqualTo("bearer");
         assertThat(spec.path("paths").path("/api/auth/login").path("post").path("security").isEmpty()).isTrue();
         assertThat(spec.path("paths").path("/api/exhibits").path("get").path("security").isEmpty()).isTrue();

@@ -10,11 +10,13 @@ public final class ApiSecurity {
     private ApiSecurity() {}
     public static SecurityFilterChain configure(HttpSecurity http, JwtDecoder decoder, CurrentAccountJwtConverter converter, boolean local) throws Exception {
         return http.csrf(csrf -> csrf.disable())
+                .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(c -> c.disable())
                 .authorizeHttpRequests(auth -> {
                     if (local) auth.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/health").permitAll();
+                    auth.requestMatchers(HttpMethod.GET,"/api/media/exhibits/*","/api/media/exhibitions/*").permitAll();
                     if(local) {
                         auth.requestMatchers("/api/local-demo/board").hasAnyRole("CASHIER","CURATOR","GUIDE","ADMINISTRATOR");
                         auth.requestMatchers("/api/local-demo/visits/**").hasRole("VISITOR");
@@ -23,6 +25,7 @@ public final class ApiSecurity {
                     auth.requestMatchers("/api/local-demo/**").denyAll();
                     auth.requestMatchers(HttpMethod.POST,"/api/auth/register","/api/auth/login").permitAll();
                     auth.requestMatchers(HttpMethod.GET,"/api/prices").permitAll();
+                    auth.requestMatchers("/api/curator/media/**","/api/curator/participations/*/images","/api/curator/participations/*/images/*").hasAnyRole("CURATOR","ADMINISTRATOR");
                     auth.requestMatchers("/api/curator/**").hasRole("CURATOR");
                     auth.requestMatchers("/api/manager/**").hasRole("MANAGER");
                     auth.requestMatchers("/api/cashier/**").hasRole("CASHIER");

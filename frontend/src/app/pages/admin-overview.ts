@@ -1,24 +1,26 @@
+import {UiLabelPipe} from '../core/i18n';
+import { TranslatePipe } from './../core/i18n';
 import { Component, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { LocalDatePipe as DatePipe } from '../core/i18n';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Api } from '../core/api';
 import { Account } from '../core/models';
 import { AdminRole, AdminState, Employee, adminStyles, subtypeFields } from '../core/admin';
 import { Feedback } from '../shared/feedback';
 
-@Component({imports:[RouterLink,Feedback,DatePipe],styles:[adminStyles],template:`
-<section class="page-heading"><p class="eyebrow">ADMINISTRATOR</p><h1>{{profile?'Moj profil':'Pregled sistema'}}</h1></section>
-<app-feedback [busy]="busy()" [error]="error()" /><button class="button secondary" [disabled]="busy()" (click)="load()">Osveži</button>
+@Component({imports:[UiLabelPipe,TranslatePipe,RouterLink,Feedback,DatePipe],styles:[adminStyles],template:`
+<section class="page-heading"><p class="eyebrow">ADMINISTRATOR</p><h1>{{profile?('ui.profile'|t):('uiText.system.overview'|t)}}</h1></section>
+<app-feedback [busy]="busy()" [error]="error()" /><button class="button secondary" [disabled]="busy()" (click)="load()">{{'uiText.refresh'|t}}</button>
 @if(loaded()){
  @if(profile){
-   @if(me();as a){<article class="panel admin-break"><h2>{{a.email}}</h2><p>Nalog #{{a.id}} · {{a.active?'Aktivan':'Neaktivan'}}</p><p>Uloge: {{a.roles.join(', ')}}</p><p>Registrovan: {{a.registeredAt|date:'dd.MM.yyyy.'}}</p><p>Poslednja prijava: {{a.lastLogin?(a.lastLogin|date:'dd.MM.yyyy. HH:mm'):'Nije evidentirana'}}</p><a [routerLink]="['/admin/accounts',a.id]">Administracija sopstvenog naloga</a></article>}
-   @if(ownEmployee();as e){<article class="panel"><h2>{{e.firstName}} {{e.lastName}}</h2><p>Poslovni podtip: {{e.type}}</p><p>Muzej #{{e.museumId}} · Zaposlen od {{e.hiredOn|date:'dd.MM.yyyy.'}}</p><p>{{e.phone||'Telefon nije unet'}}</p><p>{{subtypeLabel(e)}}: {{subtypeValue(e)||'Nije uneto'}}</p><a [routerLink]="['/admin/employees',e.id,'edit']">Izmeni profil zaposlenog</a></article>}
-   @else{<p class="empty">Nalog nema povezan profil zaposlenog. Sistemska uloga i poslovni podtip su odvojeni.</p>}
+   @if(me();as a){<article class="panel admin-break"><h2>{{a.email}}</h2><p>{{'uiText.account'|t}}{{a.id}} · {{a.active?('uiText.active.2'|t):('uiText.inactive.2'|t)}}</p><p>{{'uiText.roles'|t}} @for(role of a.roles;track role){<span>{{role|uiLabel:'role'}}{{$last?'':', '}}</span>}</p><p>{{'uiText.registered.2'|t}} {{a.registeredAt|date:'dd.MM.yyyy.'}}</p><p>{{'uiText.last.sign.in.2'|t}} {{a.lastLogin?(a.lastLogin|date:'dd.MM.yyyy. HH:mm'):('uiText.not.recorded.2'|t)}}</p><a [routerLink]="['/admin/accounts',a.id]">{{'uiText.manage.your.own.account'|t}}</a></article>}
+   @if(ownEmployee();as e){<article class="panel"><h2>{{e.firstName}} {{e.lastName}}</h2><p>{{'uiText.business.subtype.2'|t}} {{e.type|uiLabel:'role'}}</p><p>{{'uiText.museum.2'|t}}{{e.museumId}} {{'uiText.employed.since'|t}} {{e.hiredOn|date:'dd.MM.yyyy.'}}</p><p>{{e.phone||('uiText.no.phone.number'|t)}}</p><p>{{subtypeLabel(e)|t}}: {{subtypeValue(e)||('uiText.not.entered'|t)}}</p><a [routerLink]="['/admin/employees',e.id,'edit']">{{'uiText.edit.employee.profile'|t}}</a></article>}
+   @else{<p class="empty">{{'uiText.this.account.has.no.employee.profile.the.system.role.and.business.subtype.are.'|t}}</p>}
  }@else{
-   <div class="admin-kpis"><article class="panel"><h2>Nalozi</h2><strong>{{accounts().length}}</strong></article><article class="panel"><h2>Aktivni</h2><strong>{{activeCount()}}</strong></article><article class="panel"><h2>Neaktivni</h2><strong>{{accounts().length-activeCount()}}</strong></article><article class="panel"><h2>Zaposleni</h2><strong>{{employees().length}}</strong></article></div>
-   <section class="panel"><h2>Nalozi po ulozi</h2><p>Jedan nalog može imati više uloga.</p>@for(r of roles();track r.id){<p>{{r.name}}: <strong>{{roleCount(r.name)}}</strong></p>}@empty{<p class="empty">Nema konfigurisanih uloga.</p>}</section>
-   <section class="panel"><h2>Sistem</h2><p>{{health().application}} · {{health().status}}</p><p>Stanje postojećeg health endpointa; nije detaljan monitoring baza.</p></section>
-   <div class="admin-actions"><a class="button" routerLink="/admin/accounts">Korisnički nalozi</a><a class="button secondary" routerLink="/admin/employees">Zaposleni</a><a routerLink="/collection">Prostori i program</a></div>
+   <div class="admin-kpis"><article class="panel"><h2>{{'uiText.accounts'|t}}</h2><strong>{{accounts().length}}</strong></article><article class="panel"><h2>{{'uiText.active'|t}}</h2><strong>{{activeCount()}}</strong></article><article class="panel"><h2>{{'uiText.inactive'|t}}</h2><strong>{{accounts().length-activeCount()}}</strong></article><article class="panel"><h2>{{'nav.employees'|t}}</h2><strong>{{employees().length}}</strong></article></div>
+   <section class="panel"><h2>{{'uiText.accounts.by.role'|t}}</h2><p>{{'uiText.an.account.may.have.multiple.roles'|t}}</p>@for(r of roles();track r.id){<p>{{r.name|uiLabel:'role'}}: <strong>{{roleCount(r.name)}}</strong></p>}@empty{<p class="empty">{{'uiText.no.roles.configured'|t}}</p>}</section>
+   <section class="panel"><h2>{{'uiText.system'|t}}</h2><p>{{health().application}} · {{health().status|uiLabel:'ui.health'}}</p><p>{{'uiText.current.service.health.detailed.database.monitoring.is.not.included'|t}}</p></section>
+   <div class="admin-actions"><a class="button" routerLink="/admin/accounts">{{'nav.accounts'|t}}</a><a class="button secondary" routerLink="/admin/employees">{{'nav.employees'|t}}</a><a routerLink="/collection">{{'nav.collection'|t}}</a></div>
  }
 }
 `})

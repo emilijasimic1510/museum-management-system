@@ -23,7 +23,7 @@ describe('Manager dashboard',()=>{
   function pending(){return http.expectOne(r=>r.url.startsWith('/api/manager/dashboard?'));}
   it('renders real aggregates, sections and comments as text',async()=>{
     const f=TestBed.createComponent(ManagerPage);pending().flush(report());await render(f);
-    expect(f.nativeElement.textContent).toContain('Muzej test');expect(f.nativeElement.textContent).toContain('16.00');
+    expect(f.nativeElement.textContent).toContain('Muzej test');expect(f.nativeElement.textContent).toContain('16,00');
     expect(f.nativeElement.textContent).toContain('Tura test');expect(f.nativeElement.textContent).toContain('Popularnost postavki');expect(f.nativeElement.textContent).toContain('Nije evidentirano');
     expect(f.nativeElement.textContent).toContain('Postavka 8 → 9');expect(f.nativeElement.textContent).toContain('Digitalni sadržaj — inventar');expect(f.nativeElement.textContent).toContain('4,50');
     expect(f.nativeElement.textContent).toContain('<script>plain text</script>');expect(f.nativeElement.querySelector('script')).toBeNull();
@@ -34,7 +34,7 @@ describe('Manager dashboard',()=>{
     for(const [name,value] of [['from','2035-02-01'],['to','2035-02-28']]){const input:HTMLInputElement=f.nativeElement.querySelector(`[name="${name}"]`);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}
     await render(f);f.nativeElement.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
     const req=http.expectOne('/api/manager/dashboard?from=2035-02-01&to=2035-02-28');expect(req.request.method).toBe('GET');req.flush({...report(),from:'2035-02-01',to:'2035-02-28'});await render(f);
-    expect(f.nativeElement.textContent).toContain('2035-02-28');f.componentInstance.from='2035-03-01';f.componentInstance.load();await render(f);
+    expect(f.nativeElement.textContent).toContain('28.02.2035.');f.componentInstance.from='2035-03-01';f.componentInstance.load();await render(f);
     expect(f.nativeElement.textContent).toContain('datum od ne sme biti posle');http.expectNone(r=>r.url.startsWith('/api/manager'));
   });
   it('shows loading, safe error, retry and empty state',async()=>{
