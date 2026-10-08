@@ -13,7 +13,7 @@ import rs.ac.uns.ftn.museum.people.service.*;
 public class EventController {
     private final EventService service;
     public EventController(EventService service) { this.service = service; }
-    @GetMapping public List<EventResponse> list() { return service.list(); }
+    @GetMapping public List<EventResponse> list(@RequestParam(defaultValue = "false") boolean browse) { return service.list(browse); }
     @GetMapping("/{id}") public EventResponse get(@PathVariable Long id) { return service.get(id); }
     @PostMapping public ResponseEntity<EventResponse> create(@Valid @RequestBody EventRequest request) {
         var result = service.create(request);

@@ -132,7 +132,7 @@ class RichDemoDataSeederTests extends PostgresTestBase {
         });
     }
     @Test void managerDashboardShowsRevenuePopularityRatingsEventsAndTransitions() {
-        LocalDate day = db.queryForObject("select datum_registracije from korisnicki_nalog where email='demo.history.01@museum.local'", java.sql.Timestamp.class)
+        LocalDate day = db.queryForObject("select datum_registracije from korisnicki_nalog where email='ana.ristic@museum.local'", java.sql.Timestamp.class)
                 .toInstant().atZone(ZoneId.of("Europe/Belgrade")).toLocalDate().plusDays(120);
         var dashboard = manager.dashboard(day.minusDays(90), day.plusDays(16));
         assertThat(dashboard.attendance().total()).isGreaterThanOrEqualTo(58);

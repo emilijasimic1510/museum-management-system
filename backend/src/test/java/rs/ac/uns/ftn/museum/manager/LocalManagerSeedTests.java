@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.*;
 class LocalManagerSeedTests extends PostgresTestBase {
     @Autowired DemoDataSeeder seed;@Autowired JdbcTemplate jdbc;@Autowired PasswordEncoder encoder;
     @Test void managerHasRoleEmployeeSubtypeAndStableBcryptHash(){
-        String email="demo.manager@museum.local";seed.seed();
+        String email="ivan.nikolic@museum.local";seed.seed();
         var before=jdbc.queryForMap("select a.id,a.lozinka_hash,z.id employee,m.nivo_izvestavanja from korisnicki_nalog a join zaposleni z on z.nalog_id=a.id join menadzer m on m.zaposleni_id=z.id where a.email=? and z.tip_zaposlenog='MANAGER'",email);
         seed.seed();assertThat(jdbc.queryForMap("select a.id,a.lozinka_hash,z.id employee,m.nivo_izvestavanja from korisnicki_nalog a join zaposleni z on z.nalog_id=a.id join menadzer m on m.zaposleni_id=z.id where a.email=?",email)).isEqualTo(before);
         assertThat(encoder.matches(DemoDataSeeder.PASSWORD,(String)before.get("lozinka_hash"))).isTrue();

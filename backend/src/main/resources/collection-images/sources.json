@@ -1,0 +1,67 @@
+[
+  {
+    "file": "met-0.jpg",
+    "id": 436535,
+    "title": "Wheat Field with Cypresses",
+    "artist": "Vincent van Gogh",
+    "credit": "Purchase, The Annenberg Foundation Gift, 1993",
+    "source": "https://www.metmuseum.org/art/collection/search/436535",
+    "image": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-42549-001.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://www.metmuseum.org/policies/image-resources",
+    "usage": "Thematic reference image; not a photograph of the collection object",
+    "sha256": "AF0E3486621C210B54932D055294051B5601AA3362AF4B84AB97E2831F8163BC"
+  },
+  {
+    "file": "met-1.jpg",
+    "id": 436532,
+    "title": "Self-Portrait with a Straw Hat (obverse: The Potato Peeler)",
+    "artist": "Vincent van Gogh",
+    "credit": "Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967",
+    "source": "https://www.metmuseum.org/art/collection/search/436532",
+    "image": "https://images.metmuseum.org/CRDImages/ep/web-large/DT1502_cropped2.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://www.metmuseum.org/policies/image-resources",
+    "usage": "Thematic reference image; not a photograph of the collection object",
+    "sha256": "03E6BB58FEB2E091DBD56ADB601B3FCCBA17386402D5676C994B806058A797DA"
+  },
+  {
+    "file": "met-2.jpg",
+    "id": 437853,
+    "title": "Venice, from the Porch of Madonna della Salute",
+    "artist": "Joseph Mallord William Turner",
+    "credit": "Bequest of Cornelius Vanderbilt, 1899",
+    "source": "https://www.metmuseum.org/art/collection/search/437853",
+    "image": "https://images.metmuseum.org/CRDImages/ep/web-large/DP169568.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://www.metmuseum.org/policies/image-resources",
+    "usage": "Thematic reference image; not a photograph of the collection object",
+    "sha256": "6F1C4B129CC7302098A4BFC3C835E5B932C3B0FA8566544BDB54A694AB4C7656"
+  },
+  {
+    "file": "met-3.jpg",
+    "id": 436121,
+    "title": "A Woman Seated beside a Vase of Flowers (Madame Paul Valpinçon?)",
+    "artist": "Edgar Degas",
+    "credit": "H. O. Havemeyer Collection, Bequest of Mrs. H. O. Havemeyer, 1929",
+    "source": "https://www.metmuseum.org/art/collection/search/436121",
+    "image": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-25460-001.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://www.metmuseum.org/policies/image-resources",
+    "usage": "Thematic reference image; not a photograph of the collection object",
+    "sha256": "550FD72D1D630863D393CEC1597FFDCFDA650C64BB91CA0CE151735CD0989E21"
+  },
+  {
+    "file": "met-4.jpg",
+    "id": 435882,
+    "title": "Still Life with Apples and a Pot of Primroses",
+    "artist": "Paul Cézanne",
+    "credit": "Bequest of Sam A. Lewisohn, 1951",
+    "source": "https://www.metmuseum.org/art/collection/search/435882",
+    "image": "https://images.metmuseum.org/CRDImages/ep/web-large/DT47.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://www.metmuseum.org/policies/image-resources",
+    "usage": "Thematic reference image; not a photograph of the collection object",
+    "sha256": "0B9FBA184D463349DF09B8C6E7ECFCFF89BC1C1DB31E526551250FCADF884F0E"
+  }
+]

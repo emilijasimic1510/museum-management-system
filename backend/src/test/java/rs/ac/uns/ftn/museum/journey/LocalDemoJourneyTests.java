@@ -40,15 +40,15 @@ class LocalDemoJourneyTests extends PostgresTestBase {
     }
     @Test void guideSeedIsPrivateConnectedAndIdempotent() throws Exception {
         seed.seed();
-        var before=jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where naziv in ('Demo razgovor o svetlosti','Demo radionica boje','Demo otkazana tura') order by id");
+        var before=jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where naziv in ('Razgovor o svetlosti','Radionica boje i pigmenta','Šetnja kroz skulpturu') order by id");
         assertThat(before).hasSize(3);seed.seed();
-        assertThat(jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where naziv in ('Demo razgovor o svetlosti','Demo radionica boje','Demo otkazana tura') order by id")).isEqualTo(before);
+        assertThat(jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where naziv in ('Razgovor o svetlosti','Radionica boje i pigmenta','Šetnja kroz skulpturu') order by id")).isEqualTo(before);
         assertThat(jdbc.queryForList("select r.naziv from nalog_uloga ar join uloga r on r.id=ar.uloga_id join korisnicki_nalog a on a.id=ar.nalog_id where a.email=?",String.class,DemoDataSeeder.GUIDE_EMAIL)).containsExactly("GUIDE");
         assertThat(jdbc.queryForObject("select count(*) from vodic v join zaposleni z on z.id=v.zaposleni_id join korisnicki_nalog a on a.id=z.nalog_id where a.email=? and z.tip_zaposlenog='GUIDE' and a.lozinka_hash like '$2%'",Integer.class,DemoDataSeeder.GUIDE_EMAIL)).isEqualTo(1);
         String token=login(DemoDataSeeder.GUIDE_EMAIL);
         long guide=call(get("/api/guides/me"),token,null,200).path("id").asLong();
         assertThat(jdbc.queryForObject("select count(*) from dogadjaj where vodic_id=? and pocetak>now()",Integer.class,guide)).isEqualTo(3);
-        Long workshop=jdbc.queryForObject("select id from dogadjaj where naziv='Demo radionica boje'",Long.class);
+        Long workshop=jdbc.queryForObject("select id from dogadjaj where naziv='Radionica boje i pigmenta'",Long.class);
         assertThat(call(get("/api/events/"+workshop),null,null,200).path("registeredCount").asLong()).isEqualTo(1);
         call(get("/api/events/"+workshop+"/registrations"),token,null,200);
         call(get("/api/tickets/me"),token,null,403);call(get("/api/admin/accounts"),token,null,403);
@@ -68,7 +68,7 @@ class LocalDemoJourneyTests extends PostgresTestBase {
     }
     @Test void localCuratorHasOnlyCuratorRoleAndSubtype() throws Exception {
         seed.seed();seed.seed();
-        String email="demo.curator@museum.local";
+        String email="nikola.markovic@museum.local";
         var roles=jdbc.queryForList("select r.naziv from nalog_uloga ar join uloga r on r.id=ar.uloga_id join korisnicki_nalog a on a.id=ar.nalog_id where a.email=?",String.class,email);
         assertThat(roles).containsExactly("CURATOR");
         assertThat(jdbc.queryForObject("select count(*) from kustos k join zaposleni z on z.id=k.zaposleni_id join korisnicki_nalog a on a.id=z.nalog_id where a.email=? and z.tip_zaposlenog='CURATOR'",Integer.class,email)).isEqualTo(1);

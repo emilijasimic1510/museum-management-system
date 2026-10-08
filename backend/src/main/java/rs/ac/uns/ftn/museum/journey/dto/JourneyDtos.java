@@ -18,7 +18,7 @@ public final class JourneyDtos {
     public record RatingRequest(@NotNull @Min(1) @Max(5) Integer rating, String comment) {}
     public record RouteRequest(@NotNull RouteCriterion criterion) {}
     public record TicketResponse(Long id, Long visitorId, Long termId, Long exhibitionId, Instant priceValidFrom,
-            String category, Instant purchasedAt, BigDecimal paidPrice, TicketStatus status, String qrToken, Instant validUntil) {
+            String category, Instant purchasedAt, BigDecimal paidPrice, TicketStatus status, String qrToken, Instant validUntil, String exhibitionName) {
         @Override public String toString() { return "TicketResponse[id="+id+", token redacted]"; }
     }
     public record PaymentResponse(Long id, Long ticketId, BigDecimal amount, PaymentMethod method,

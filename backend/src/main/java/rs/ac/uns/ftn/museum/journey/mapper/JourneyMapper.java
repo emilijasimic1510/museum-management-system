@@ -9,7 +9,7 @@ public final class JourneyMapper {
     public static TicketResponse ticket(Ticket t) {
         var p=t.getPrice().getId();
         return new TicketResponse(t.getId(),t.getVisitor()==null?null:t.getVisitor().getId(),t.getTerm().getId(),
-                p.getExhibitionId(),p.getValidFrom(),p.getCategory(),t.getPurchasedAt(),t.getPaidPrice(),t.getStatus(),t.getQrToken(),t.getValidUntil());
+                p.getExhibitionId(),p.getValidFrom(),p.getCategory(),t.getPurchasedAt(),t.getPaidPrice(),t.getStatus(),t.getQrToken(),t.getValidUntil(),t.getTerm().getExhibition().getName());
     }
     public static PaymentResponse payment(Payment p) { return new PaymentResponse(p.getId(),p.getTicket().getId(),p.getAmount(),p.getMethod(),p.getStatus(),p.getExternalReference(),p.getCreatedAt()); }
     public static VisitResponse visit(Visit v) {

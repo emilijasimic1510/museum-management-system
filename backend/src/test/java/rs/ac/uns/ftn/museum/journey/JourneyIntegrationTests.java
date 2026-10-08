@@ -3,6 +3,7 @@ package rs.ac.uns.ftn.museum.journey;
 import com.fasterxml.jackson.databind.*;
 import jakarta.persistence.EntityManager;
 import java.util.*;
+import java.time.Instant;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +66,69 @@ class JourneyIntegrationTests extends PostgresTestBase {
     }
     private Map<String,Object> purchaseBody(Fixture f,boolean decline) { return Map.of("termId",f.term(),"category","REDOVNA","paymentMethod","KARTICA","demoDecline",decline); }
     private JsonNode buy(Fixture f,User user) throws Exception { return call(post("/api/tickets"),user,purchaseBody(f,false),201); }
+    private JsonNode browseExhibition(long id) throws Exception {
+        for (JsonNode e : call(get("/api/exhibitions").param("browse","true"),null,null,200))
+            if(e.path("id").asLong()==id)return e;
+        return json.nullNode();
+    }
+    @Test void pastExhibitionIsAbsentFromBrowseButPreservedForHistory() throws Exception {
+        Fixture f=fixture(3);
+        assertThat(browseExhibition(f.exhibition()).isNull()).isFalse();
+        new TransactionTemplate(transactions).executeWithoutResult(s->{
+            jdbc.update("update termin_izlozbe set pocetak=now()-interval '2 days',kraj=now()-interval '1 day' where id=?",f.term());
+            jdbc.update("update izlozba set datum_pocetka=now()-interval '3 days',datum_zavrsetka=now()-interval '1 day' where id=?",f.exhibition());
+        });
+        // Date filtering must work even before a maintenance job updates status.
+        assertThat(browseExhibition(f.exhibition()).isNull()).isTrue();
+        assertThat(call(get("/api/exhibitions/"+f.exhibition()),null,null,200).path("terms")).hasSize(1);
+        long exhibit=jdbc.queryForObject("select eksponat_id from ucesce_eksponata_na_izlozbi where id_ucesca=?",Long.class,f.first());
+        assertThat(call(get("/api/exhibits/"+exhibit),null,null,200).path("exhibitions")).isEmpty();
+        assertThat(call(get("/api/exhibits/"+exhibit+"/participations"),null,null,200)).isEmpty();
+    }
+    @Test void futureSoldOutTermRemainsBrowsableButCannotBePurchased() throws Exception {
+        Fixture f=fixture(1);User owner=user(),other=user();
+        jdbc.update("update termin_izlozbe set pocetak=now()+interval '1 hour',kraj=now()+interval '2 hours' where id=?",f.term());
+        buy(f,owner);
+        assertThat(browseExhibition(f.exhibition()).path("terms").get(0).path("status").asText()).isEqualTo("POPUNJEN");
+        call(post("/api/tickets"),other,purchaseBody(f,false),409);
+    }
+    @Test void browseOmitsExpiredTermsAndFinishedExhibitionStatuses() throws Exception {
+        Fixture f=fixture(3);
+        jdbc.update("update termin_izlozbe set pocetak=now()-interval '2 hours',kraj=now()-interval '1 hour' where id=?",f.term());
+        assertThat(browseExhibition(f.exhibition()).path("terms")).isEmpty();
+        for(String state:List.of("ZAVRSENA","OTKAZANA")) {
+            jdbc.update("update izlozba set status=? where id=?",state,f.exhibition());
+            assertThat(browseExhibition(f.exhibition()).isNull()).isTrue();
+        }
+    }
+    @Test void pastTicketAndFinishedVisitRemainInVisitorHistory() throws Exception {
+        Fixture f=fixture(3);User owner=user(),cashier=user("CASHIER");
+        JsonNode ticket=buy(f,owner);long id=ticket.path("id").asLong();
+        long visit=enter(f,cashier,ticket);
+        call(post("/api/visits/"+visit+"/finish"),owner,null,200);
+        jdbc.update("update ulaznica set datum_kupovine=now()-interval '2 days',vazi_do=now()-interval '1 day' where id=?",id);
+        jdbc.update("update izlozba set status='ZAVRSENA' where id=?",f.exhibition());
+        assertThat(browseExhibition(f.exhibition()).isNull()).isTrue();
+        assertThat(call(get("/api/tickets/me"),owner,null,200).get(0).path("id").asLong()).isEqualTo(id);
+        JsonNode history=call(get("/api/visits/me"),owner,null,200).get(0);
+        assertThat(history.path("id").asLong()).isEqualTo(visit);
+        assertThat(history.path("status").asText()).isEqualTo("ZAVRSENA");
+    }
+    @Test void pastEventLeavesPublicBrowseButRegistrationHistoryRemains() throws Exception {
+        Fixture f=fixture(3);User guide=user("GUIDE"),owner=user(),other=user();
+        long event=call(post("/api/events"),guide,Map.of("exhibitionId",f.exhibition(),"name","Browse regression","type","TURA",
+                "start",Instant.now().plusSeconds(3600).toString(),"end",Instant.now().plusSeconds(7200).toString(),"capacity",1,"status","PLANIRAN"),201).path("id").asLong();
+        call(post("/api/events/"+event+"/registrations"),owner,Map.of(),201);
+        JsonNode future=call(get("/api/events").param("browse","true"),null,null,200);
+        assertThat(future).anySatisfy(e->{assertThat(e.path("id").asLong()).isEqualTo(event);assertThat(e.path("status").asText()).isEqualTo("POPUNJEN");});
+        call(post("/api/events/"+event+"/registrations"),other,Map.of(),409);
+        jdbc.update("update dogadjaj set pocetak=now()-interval '2 hours',kraj=now()-interval '1 hour' where id=?",event);
+        assertThat(call(get("/api/events").param("browse","true"),null,null,200)).noneSatisfy(e->assertThat(e.path("id").asLong()).isEqualTo(event));
+        assertThat(call(get("/api/events"),guide,null,200)).anySatisfy(e->assertThat(e.path("id").asLong()).isEqualTo(event));
+        JsonNode registration=call(get("/api/visitors/me/registrations"),owner,null,200).get(0);
+        assertThat(registration.path("eventId").asLong()).isEqualTo(event);
+        assertThat(registration.path("status").asText()).isEqualTo("PRIJAVLJEN");
+    }
     private long enter(Fixture f,User cashier,JsonNode ticket) throws Exception {
         return call(post("/api/cashier/validate"),cashier,Map.of("qrToken",ticket.get("qrToken").asText(),"termId",f.term()),201).get("id").asLong();
     }

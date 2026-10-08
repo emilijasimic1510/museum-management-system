@@ -47,7 +47,8 @@ public class ExhibitCatalogService {
     @Transactional(readOnly=true)
     public List<ParticipationResponse> exhibitParticipations(Long id) {
         requireExhibit(id);
-        return participations.findByExhibitIdAndExhibitionOnlineVisibleTrueOrderById(id).stream().map(this::publicParticipation).toList();
+        return participations.findByExhibitIdAndExhibitionOnlineVisibleTrueOrderById(id).stream()
+                .filter(p -> ExhibitionService.browsable(p.getExhibition(), clock.instant())).map(this::publicParticipation).toList();
     }
     @Transactional(readOnly=true)
     public List<ParticipationResponse> exhibitionParticipations(Long id) {
@@ -180,6 +181,7 @@ public class ExhibitCatalogService {
         return new ExhibitResponse(e.getId(),e.getName(),e.getCreationPeriod(),e.getType(),e.getMaterial(),e.getOrigin(),e.getDescription(),
                 authorships.findByExhibitIdOrderByAuthorId(e.getId()).stream().map(this::authorSummary).toList(),
                 participations.findByExhibitIdAndExhibitionOnlineVisibleTrueOrderById(e.getId()).stream()
+                        .filter(p -> ExhibitionService.browsable(p.getExhibition(), clock.instant()))
                         .map(p->new CatalogReference(p.getExhibition().getId(),p.getExhibition().getName())).distinct().toList());
     }
     private ManagedExhibitResponse managedExhibit(Exhibit e) { return new ManagedExhibitResponse(exhibit(e),e.getInventoryNumber()); }

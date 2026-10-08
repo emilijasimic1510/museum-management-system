@@ -14,7 +14,7 @@ public class ExhibitionController {
     private final ExhibitionService service;
     public ExhibitionController(ExhibitionService service) { this.service = service; }
     @GetMapping
-    public List<ExhibitionResponse> list() { return service.list(); }
+    public List<ExhibitionResponse> list(@RequestParam(defaultValue = "false") boolean browse) { return service.list(browse); }
     @GetMapping("/{id}")
     public ExhibitionResponse get(@PathVariable Long id) { return service.get(id); }
     @PostMapping

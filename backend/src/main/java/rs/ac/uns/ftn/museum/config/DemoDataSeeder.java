@@ -18,11 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 @org.springframework.core.annotation.Order(10)
 @Profile({"local", "development"})
 public class DemoDataSeeder implements ApplicationRunner {
-    public static final String VISITOR_EMAIL = "demo.visitor@museum.local";
-    public static final String STAFF_EMAIL = "demo.staff@museum.local";
-    public static final String GUIDE_EMAIL = "demo.guide@museum.local";
+    public static final String VISITOR_EMAIL = "ana.petrovic@museum.local";
+    public static final String STAFF_EMAIL = "milica.jovanovic@museum.local";
+    public static final String GUIDE_EMAIL = "jelena.stojanovic@museum.local";
     public static final String PASSWORD = "MuseumDemo!2026";
-    private static final String MUSEUM = "Demo Museum Novi Sad";
+    private static final String MUSEUM = "Muzej gradskih priča";
     private static final String EXHIBITION = "Tragovi svetlosti";
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
@@ -33,9 +33,16 @@ public class DemoDataSeeder implements ApplicationRunner {
 
     @Transactional
     public void seed() {
+        LocalContentUpgrade.apply(jdbc);
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Studija plave površine u kojoj se hladni tonovi prelivaju preko gotovo nevidljivih tragova četkice. Posmatrač prvo primećuje tišinu boje, a zatim slojeve svetlosti koji grade prostor.", "DEMO-EX-001");
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Kompaktna skulptura koja spaja prirodnu teksturu drveta sa precizno obrađenim metalom. Napetost između toplog i hladnog materijala otvara pitanje odnosa tela i prostora.", "DEMO-EX-002");
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Fotografski zapis ranog jutra u Novom Sadu. Prigušena svetlost odvaja fasade, praznu ulicu i poslednje senke noći u jednu mirnu gradsku kompoziciju.", "DEMO-EX-003");
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Bronzana forma zasnovana na odnosu punog volumena i kružnog otvora. Promena ugla posmatranja menja ravnotežu između težine materijala i osećaja lakoće.", "DEMO-SC-001");
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Klesani kamen sa jasno vidljivim tragovima ručne obrade. Ponavljanje plitkih rezova pretvara površinu u ritam koji se menja sa svakim pomeranjem svetla.", "DEMO-SC-002");
+        jdbc.update("update eksponat set opis=? where inventarski_broj=?", "Vitka metalna struktura čija se linija prekida i ponovo uspostavlja kroz prostor. Senka na podu postaje ravnopravni deo skulpturalne kompozicije.", "DEMO-SC-003");
         Long museum = id("select id from muzej where naziv=?", MUSEUM);
         if (museum == null) {
-            jdbc.update("insert into muzej(naziv,godina_osnivanja,adresa,opis,aktivan) values(?,?,?,?,true)", MUSEUM, 2026, "Bulevar muzeja 1, Novi Sad", "Bezbedna razvojna zbirka za demonstraciju muzejske aplikacije.");
+            jdbc.update("insert into muzej(naziv,godina_osnivanja,adresa,opis,aktivan) values(?,?,?,?,true)", MUSEUM, 2026, "Bulevar muzeja 1, Novi Sad", "Zbirka umetnosti i vizuelne kulture posvećena gradskom životu, svetlosti i sećanju.");
             museum = id("select id from muzej where naziv=?", MUSEUM);
         }
         Long hallA = ensureHall(museum, "Galerija svetlosti", 1, 120);
@@ -109,38 +116,47 @@ public class DemoDataSeeder implements ApplicationRunner {
                 ensureContent("DEMO-LIGHT-CITY-QR-001","TEKST","demo/jutro-tragovi-svetlosti.txt");
             }
         }
-        Long visitorAccount = ensureAccount(VISITOR_EMAIL, "Demo", "Posetilac", "0600000001", true, "VISITOR", null);
+        Long visitorAccount = ensureAccount(VISITOR_EMAIL, "Ana", "Petrović", "0600000001", true, "VISITOR", null);
+        seedRecommendationProfile(visitorAccount);
         if (environment.matchesProfiles("local")) {
-            ensureAccount("demo.admin@museum.local", "Demo", "Administrator", "0600000006", false, "ADMINISTRATOR", museum);
-            Long administrator=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "demo.admin@museum.local");
+            ensureAccount("marija.ilic@museum.local", "Marija", "Ilić", "0600000006", false, "ADMINISTRATOR", museum);
+            Long administrator=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "marija.ilic@museum.local");
             jdbc.update("update zaposleni set tip_zaposlenog='ADMINISTRATOR' where id=?",administrator);
             jdbc.update("insert into administrator(zaposleni_id,nivo_administracije) values(?,'Nalozi, zaposleni i muzejski program') on conflict do nothing",administrator);
-            ensureAccount("demo.manager@museum.local", "Demo", "Menadžer", "0600000005", false, "MANAGER", museum);
-            Long manager=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "demo.manager@museum.local");
+            ensureAccount("ivan.nikolic@museum.local", "Ivan", "Nikolić", "0600000005", false, "MANAGER", museum);
+            Long manager=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "ivan.nikolic@museum.local");
             jdbc.update("update zaposleni set tip_zaposlenog='MANAGER' where id=?",manager);
             jdbc.update("insert into menadzer(zaposleni_id,nivo_izvestavanja) values(?,'Svi muzeji — zbirni operativni izveštaji') on conflict do nothing",manager);
-            ensureAccount("demo.curator@museum.local", "Demo", "Kustos", "0600000003", false, "CURATOR", museum);
-            Long curator=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "demo.curator@museum.local");
+            ensureAccount("nikola.markovic@museum.local", "Nikola", "Marković", "0600000003", false, "CURATOR", museum);
+            Long curator=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", "nikola.markovic@museum.local");
             jdbc.update("update zaposleni set tip_zaposlenog='CURATOR' where id=?",curator);
             jdbc.update("insert into kustos(zaposleni_id) values(?) on conflict do nothing",curator);
-            ensureAccount(GUIDE_EMAIL, "Demo", "Vodič", "0600000004", false, "GUIDE", museum);
+            ensureAccount(GUIDE_EMAIL, "Jelena", "Stojanović", "0600000004", false, "GUIDE", museum);
             Long ownGuide=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?",GUIDE_EMAIL);
             jdbc.update("update zaposleni set tip_zaposlenog='GUIDE' where id=?",ownGuide);
             jdbc.update("insert into vodic(zaposleni_id,primarni_jezik) values(?,'sr') on conflict do nothing",ownGuide);
-            ensureGuideEvent(exhibition,ownGuide,"Demo razgovor o svetlosti","PREDAVANJE",now.plus(Duration.ofDays(4)),20,"PLANIRAN",null);
+            ensureGuideEvent(exhibition,ownGuide,"Razgovor o svetlosti","PREDAVANJE",now.plus(Duration.ofDays(4)),20,"PLANIRAN",null);
             Long demoVisitor=id("select id from posetilac where nalog_id=?",visitorAccount);
-            ensureGuideEvent(exhibition,ownGuide,"Demo radionica boje","RADIONICA",now.plus(Duration.ofDays(5)),2,"PLANIRAN",demoVisitor);
-            ensureGuideEvent(exhibition,ownGuide,"Demo otkazana tura","TURA",now.plus(Duration.ofDays(6)),10,"OTKAZAN",null);
+            ensureGuideEvent(exhibition,ownGuide,"Radionica boje i pigmenta","RADIONICA",now.plus(Duration.ofDays(5)),2,"PLANIRAN",demoVisitor);
+            ensureGuideEvent(exhibition,ownGuide,"Šetnja kroz skulpturu","TURA",now.plus(Duration.ofDays(6)),10,"OTKAZAN",null);
         }
-        Long staffAccount = ensureAccount(STAFF_EMAIL, "Demo", "Zaposleni", "0600000002", false, "CASHIER", museum);
-        ensureRole(staffAccount, "GUIDE");
+        Long staffAccount = ensureAccount(STAFF_EMAIL, "Milica", "Jovanović", "0600000002", false, "CASHIER", museum);
         Long cashier = id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?", STAFF_EMAIL);
         Long guide = cashier;
         ensureSubtype(cashier, "CASHIER");
+        if(environment.matchesProfiles("local")) {
+            guide=id("select z.id from zaposleni z join korisnicki_nalog a on a.id=z.nalog_id where a.email=?",GUIDE_EMAIL);
+            jdbc.update("update dogadjaj set vodic_id=? where vodic_id=?",guide,cashier);
+            jdbc.update("delete from vodic where zaposleni_id=?",cashier);
+            jdbc.update("delete from nalog_uloga where nalog_id=? and uloga_id in(select id from uloga where naziv='GUIDE')",staffAccount);
+            jdbc.update("update zaposleni set tip_zaposlenog='CASHIER' where id=?",cashier);
+        } else {
+        ensureRole(staffAccount, "GUIDE");
         // The same development employee is also a guide so the event and cashier flows are immediately testable.
         jdbc.update("update zaposleni set tip_zaposlenog='GUIDE' where id=?", guide);
         jdbc.update("delete from blagajnik where zaposleni_id=?", guide);
         ensureSubtype(guide, "GUIDE");
+        }
         Instant eventStart = now.plus(Duration.ofDays(3));
         ensureEvent(exhibition, guide, eventStart, eventStart.plus(Duration.ofHours(2)));
     }
@@ -151,7 +167,7 @@ public class DemoDataSeeder implements ApplicationRunner {
     }
     private void ensureTerm(Long exhibition, Instant start, int capacity) { if(id("select id from termin_izlozbe where izlozba_id=? and pocetak=?",exhibition,ts(start))==null) jdbc.update("insert into termin_izlozbe(izlozba_id,pocetak,kraj,kapacitet,status) values(?,?,?,?,'OTVOREN')",exhibition,ts(start),ts(start.plus(Duration.ofHours(2))),capacity); }
     private void ensureLiveDemoTerm(Long exhibition, Instant now, int capacity) {
-        Long active=id("select id from termin_izlozbe where izlozba_id=? and pocetak<=?",exhibition,ts(now));
+        Long active=id("select id from termin_izlozbe where izlozba_id=? and pocetak<=? and kraj>? and status='OTVOREN'",exhibition,ts(now),ts(now));
         if(active==null) jdbc.update("insert into termin_izlozbe(izlozba_id,pocetak,kraj,kapacitet,status) values(?,?,?,?,'OTVOREN')",exhibition,ts(now.minus(Duration.ofMinutes(5))),ts(now.plus(Duration.ofHours(2))),capacity);
     }
     private Long ensureExhibition(Long hall, String name, String description, Instant now) {
@@ -160,8 +176,8 @@ public class DemoDataSeeder implements ApplicationRunner {
         jdbc.update("insert into izlozba(sala_id,naziv,opis,datum_pocetka,datum_zavrsetka,status,online_vidljiva) values(?,?,?,?,?,'AKTIVNA',true)",hall,name,description,ts(now.minus(Duration.ofDays(1))),ts(now.plus(Duration.ofDays(180))));
         return id("select id from izlozba where naziv=?",name);
     }
-    private void ensurePrice(Long exhibition,String category,BigDecimal price) { if(id("select izlozba_id from cenovnik_izlozbe where izlozba_id=? and kategorija=?",exhibition,category)==null) jdbc.update("insert into cenovnik_izlozbe(izlozba_id,datum_vazenja_od,kategorija,datum_vazenja_do,cena,napomena) values(?,?,?,null,?,?)",exhibition,ts(Instant.now().minusSeconds(60)),category,price,"Demo cenovnik"); }
-    private Long ensureAuthor(String first,String last) { Long x=id("select id from autor where ime=? and prezime=?",first,last);if(x!=null)return x;jdbc.update("insert into autor(ime,prezime,godina_rodjenja,biografija) values(?,?,?,?)",first,last,1988,"Demo autor lokalne zbirke.");return id("select id from autor where ime=? and prezime=?",first,last); }
+    private void ensurePrice(Long exhibition,String category,BigDecimal price) { if(id("select izlozba_id from cenovnik_izlozbe where izlozba_id=? and kategorija=?",exhibition,category)==null) jdbc.update("insert into cenovnik_izlozbe(izlozba_id,datum_vazenja_od,kategorija,datum_vazenja_do,cena,napomena) values(?,?,?,null,?,?)",exhibition,ts(Instant.now().minusSeconds(60)),category,price,"Redovni cenovnik"); }
+    private Long ensureAuthor(String first,String last) { Long x=id("select id from autor where ime=? and prezime=?",first,last);if(x!=null)return x;jdbc.update("insert into autor(ime,prezime,godina_rodjenja,biografija) values(?,?,?,?)",first,last,1988,"Autor posvećen odnosu svetlosti, materijala i svakodnevnog života.");return id("select id from autor where ime=? and prezime=?",first,last); }
     private Long ensureExhibit(String name,String year,String type,String material,String origin,String description,String inventory) { Long x=id("select id from eksponat where inventarski_broj=?",inventory);if(x!=null)return x;jdbc.update("insert into eksponat(naziv,godina_nastanka,tip,materijal,poreklo,opis,inventarski_broj) values(?,?,?,?,?,?,?)",name,year,type,material,origin,description,inventory);return id("select id from eksponat where inventarski_broj=?",inventory); }
     private void ensureAuthorship(Long author,Long exhibit) { jdbc.update("insert into autorstvo(autor_id,eksponat_id,vrsta_doprinosa) values(?,?,?) on conflict do nothing",author,exhibit,"Autor"); }
     private void upgradeDemoContext(String qr,String original,String replacement) {
@@ -171,6 +187,15 @@ public class DemoDataSeeder implements ApplicationRunner {
     private void ensureParticipation(Long exhibition,Long exhibit,int order,String qr,String context) { Long x=id("select id_ucesca from ucesce_eksponata_na_izlozbi where qr_token=?",qr);if(x!=null)return;jdbc.update("insert into ucesce_eksponata_na_izlozbi(izlozba_id,eksponat_id,datum_postavljanja,pozicija,redosled_obilaska,kontekstualni_opis,qr_token,qr_putanja) values(?,?,now(),?,?,?,?,?)",exhibition,exhibit,"Sala A"+order,order,context,qr,"/demo/qr/"+qr); }
     private void ensureContent(String qr,String type,String path) { if(id("select d.id from digitalni_sadrzaj d join ucesce_eksponata_na_izlozbi p on p.id_ucesca=d.ucesce_id where p.qr_token=?",qr)==null)jdbc.update("insert into digitalni_sadrzaj(ucesce_id,tip_sadrzaja,putanja,jezik,verzija,generisan_automatski,datum_kreiranja) select id_ucesca,?,?,?,1,false,now() from ucesce_eksponata_na_izlozbi where qr_token=?","TEKST".equals(type)?"TEKST":type,path,"sr",qr); }
     private Long ensureAccount(String email,String first,String last,String phone,boolean consent,String role,Long museum) { Long x=id("select id from korisnicki_nalog where email=?",email);if(x==null){jdbc.update("insert into korisnicki_nalog(email,lozinka_hash,aktivan,datum_registracije) values(?,?,true,now())",email,encoder.encode(PASSWORD));x=id("select id from korisnicki_nalog where email=?",email);jdbc.update("insert into nalog_uloga(nalog_id,uloga_id,datum_dodele) select ?,id,now() from uloga where naziv=?",x,role);if("VISITOR".equals(role))jdbc.update("insert into posetilac(nalog_id,ime,prezime,telefon,saglasnost_za_preporuke) values(?,?,?,?,?)",x,first,last,phone,consent);else {jdbc.update("insert into zaposleni(nalog_id,muzej_id,ime,prezime,telefon,datum_zaposlenja,tip_zaposlenog) values(?,?,?,?,?,current_date,'CASHIER')",x,museum,first,last,phone);}}return x; }
+    private void seedRecommendationProfile(Long account){
+        Long visitor=id("select id from posetilac where nalog_id=?",account);
+        String[][] interests={{"fotografija","Fotografija, svetlo i dokumentarni prizori"},{"skulptura","Forma, materijal i prostorni odnosi"},{"grafika","Linija, otisak i ritam površine"}};
+        for(String[] interest:interests){
+            jdbc.update("insert into interesovanje(naziv,opis) values(?,?) on conflict(naziv) do update set opis=excluded.opis",interest[0],interest[1]);
+            Long interestId=id("select id from interesovanje where naziv=?",interest[0]);
+            jdbc.update("insert into posetilac_interesovanje(posetilac_id,interesovanje_id,nivo) values(?,?,3) on conflict do nothing",visitor,interestId);
+        }
+    }
     private void ensureRole(Long account,String role){jdbc.update("insert into nalog_uloga(nalog_id,uloga_id,datum_dodele) select ?,id,now() from uloga where naziv=? and not exists(select 1 from nalog_uloga ar join uloga r on r.id=ar.uloga_id where ar.nalog_id=? and r.naziv=?)",account,role,account,role);}
     private void ensureSubtype(Long employee, String type) {
         String table;
@@ -181,7 +206,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         }
         jdbc.update("insert into " + table + "(zaposleni_id) values(?) on conflict do nothing", employee);
     }
-    private void ensureEvent(Long exhibition,Long guide,Instant start,Instant end){if(id("select id from dogadjaj where naziv=?","Demo vođena tura") == null)jdbc.update("insert into dogadjaj(izlozba_id,vodic_id,naziv,tip,pocetak,kraj,kapacitet,jezik,status) values(?,?,?,'TURA',?,?,20,'sr','PLANIRAN')",exhibition,guide,"Demo vođena tura",ts(start),ts(end));}
+    private void ensureEvent(Long exhibition,Long guide,Instant start,Instant end){if(id("select id from dogadjaj where naziv=?","Tragovi svetlosti — vođeni obilazak") == null)jdbc.update("insert into dogadjaj(izlozba_id,vodic_id,naziv,tip,pocetak,kraj,kapacitet,jezik,status) values(?,?,?,'TURA',?,?,20,'sr','PLANIRAN')",exhibition,guide,"Tragovi svetlosti — vođeni obilazak",ts(start),ts(end));}
     private void ensureGuideEvent(Long exhibition,Long guide,String name,String type,Instant start,int capacity,String status,Long visitor) {
         // Seed each named event once. Restarts never reset dates, statuses or registrations edited by users.
         if(id("select id from dogadjaj where naziv=?",name)!=null)return;

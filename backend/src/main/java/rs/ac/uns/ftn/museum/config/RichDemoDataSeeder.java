@@ -41,14 +41,14 @@ public class RichDemoDataSeeder implements ApplicationRunner {
         // Registration date is not editable through the account API. It keeps the calendar
         // stable even when a curator reschedules an exhibition (no new seed-marker table).
         Instant registered = db.query("select datum_registracije from korisnicki_nalog where email=?",
-                rs -> rs.next() ? rs.getTimestamp(1).toInstant() : null, "demo.history.01@museum.local");
+                rs -> rs.next() ? rs.getTimestamp(1).toInstant() : null, "ana.ristic@museum.local");
         LocalDate day = registered == null ? LocalDate.now(clock.withZone(ZONE))
                 : registered.atZone(ZONE).toLocalDate().plusDays(120);
         long[] halls = seedSpaces();
         long[] authors = seedAuthors();
         long[] works = seedWorks(authors);
         long[] visitors = seedVisitors(day);
-        Long guide = id("select z.id from zaposleni z join korisnicki_nalog n on n.id=z.nalog_id join vodic v on v.zaposleni_id=z.id where n.email=?", DemoDataSeeder.STAFF_EMAIL);
+        Long guide = id("select z.id from zaposleni z join korisnicki_nalog n on n.id=z.nalog_id join vodic v on v.zaposleni_id=z.id where n.email=?", DemoDataSeeder.GUIDE_EMAIL);
         if (guide == null) throw new IllegalStateException("Base local seed must run before the rich collection");
         for (int i = 0; i < RichDemoCatalog.SHOWS.size(); i++) {
             String[] show = RichDemoCatalog.SHOWS.get(i);
@@ -58,7 +58,7 @@ public class RichDemoDataSeeder implements ApplicationRunner {
             long exhibition = ensure("select id from izlozba where naziv=?", new Object[]{show[0]},
                     "insert into izlozba(sala_id,naziv,opis,datum_pocetka,datum_zavrsetka,status,online_vidljiva) values(?,?,?,?,?,?,true) returning id",
                     halls[Integer.parseInt(show[4])], show[0], show[1] + ". " + show[6] + " " + show[7]
-                            + " Izložba pripada izmišljenoj lokalnoj muzejskoj zbirci.", ts(start), ts(end), show[5]);
+                           , ts(start), ts(end), show[5]);
             // Existing exhibition dates win, including curator changes.
             Instant installed = db.queryForObject("select datum_pocetka from izlozba where id=?", Timestamp.class, exhibition).toInstant();
             long[] participations = new long[8];
@@ -99,9 +99,9 @@ public class RichDemoDataSeeder implements ApplicationRunner {
 
     private long[] seedSpaces() {
         List<String[]> museums = RichDemoCatalog.rows("""
-            Demo Muzej savremenih tokova|1984|Ulica ateljea 18, Novi Sad|Izmišljeni muzej posvećen savremenoj umetnosti i susretu različitih materijala. Program povezuje skulpturu, slikarstvo i male prostorne eksperimente.
-            Demo Galerija obalske fotografije|2006|Kej svetionika 7, Beograd|Izmišljena galerija za fotografiju i grafiku sa čitaonicom vizuelnih dnevnika. Njena zbirka prati obalu, gradske rubove i svakodnevne putanje.
-            Demo Muzej forme i zanata|1972|Trg radionica 4, Novi Sad|Izmišljeni muzej skulpture i primenjene umetnosti. Zbirka približava posetiocima odnos ručnog rada, industrijskog oblikovanja i života predmeta.
+            Muzej savremenih tokova|1984|Ulica ateljea 18, Novi Sad|Muzej posvećen savremenoj umetnosti i susretu različitih materijala. Program povezuje skulpturu, slikarstvo i male prostorne eksperimente.
+            Galerija obalske fotografije|2006|Kej svetionika 7, Beograd|Galerija za fotografiju i grafiku sa čitaonicom vizuelnih dnevnika. Njena zbirka prati obalu, gradske rubove i svakodnevne putanje.
+            Muzej forme i zanata|1972|Trg radionica 4, Novi Sad|Muzej skulpture i primenjene umetnosti. Zbirka približava posetiocima odnos ručnog rada, industrijskog oblikovanja i života predmeta.
             """);
         String[] names = {"Velika galerija", "Skulptorski salon", "Sala moderne umetnosti", "Grafički kabinet", "Galerija predmeta", "Mala galerija", "Portretni salon", "Atrijum", "Galerija fotografije"};
         long[] result = new long[9];
@@ -124,20 +124,20 @@ public class RichDemoDataSeeder implements ApplicationRunner {
             String[] a = RichDemoCatalog.AUTHORS.get(i);
             result[i] = ensure("select id from autor where ime=? and prezime=?", new Object[]{a[0], a[1]},
                     "insert into autor(ime,prezime,godina_rodjenja,biografija) values(?,?,?,?) returning id",
-                    a[0], a[1], Integer.parseInt(a[2]), a[3] + " Izmišljena autorska biografija za lokalnu zbirku.");
+                    a[0], a[1], Integer.parseInt(a[2]), a[3]);
         }
         return result;
     }
     private long[] seedWorks(long[] authors) {
         long[] result = new long[RichDemoCatalog.WORKS.size()];
-        String[] origins = {"Novi Sad — zamišljeni atelje na obali", "Beograd — izmišljena radionička zbirka", "Zrenjanin — zamišljeni autorski legat", "Subotica — izmišljeni studijski ciklus"};
+        String[] origins = {"Novi Sad — atelje na obali", "Beograd — radionička zbirka", "Zrenjanin — autorski legat", "Subotica — studijski ciklus"};
         for (int i = 0; i < result.length; i++) {
             String[] w = RichDemoCatalog.WORKS.get(i);
             result[i] = ensure("select id from eksponat where inventarski_broj=?", new Object[]{"DEMO-RICH-EX-%03d".formatted(i + 1)},
                     "insert into eksponat(naziv,godina_nastanka,tip,materijal,poreklo,opis,inventarski_broj) values(?,?,?,?,?,?,?) returning id",
                     w[0], String.valueOf(1998 + i % 27), w[1], w[2], origins[i % 4], w[3], "DEMO-RICH-EX-%03d".formatted(i + 1));
             db.update("insert into autorstvo(autor_id,eksponat_id,vrsta_doprinosa,napomena) values(?,?,?,?) on conflict do nothing",
-                    authors[i / 7 * 3 + i % 3], result[i], i / 7 == 4 ? "Dizajn i prototip" : "Autor koncepta i realizacije", "Autorski rad u izmišljenoj zbirci.");
+                    authors[i / 7 * 3 + i % 3], result[i], i / 7 == 4 ? "Dizajn i prototip" : "Autor koncepta i realizacije", "Autorski rad u muzejskoj zbirci.");
             if (i % 7 == 5) db.update("insert into autorstvo(autor_id,eksponat_id,vrsta_doprinosa,napomena) values(?,?,?,?) on conflict do nothing",
                     authors[24 + (i / 7) % 2], result[i], i % 2 == 0 ? "Konstrukcija i prostorna realizacija" : "Tekstilni i svetlosni elementi", "Kolektivna realizacija uz glavnog autora.");
         }
@@ -149,7 +149,7 @@ public class RichDemoDataSeeder implements ApplicationRunner {
         String[] last = {"Ristić", "Babić", "Đurić", "Vasić", "Ilić", "Lazić"};
         String hash = null;
         for (int i = 0; i < result.length; i++) {
-            String email = "demo.history.%02d@museum.local".formatted(i + 1);
+            String email = LocalContentUpgrade.historyEmail(i);
             Long account = id("select id from korisnicki_nalog where email=?", email);
             if (account == null) {
                 if (hash == null) hash = encoder.encode(UUID.randomUUID().toString());

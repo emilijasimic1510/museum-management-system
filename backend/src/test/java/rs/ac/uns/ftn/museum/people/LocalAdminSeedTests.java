@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LocalAdminSeedTests extends PostgresTestBase {
     @Autowired DemoDataSeeder seed;@Autowired JdbcTemplate jdbc;@Autowired PasswordEncoder encoder;@Autowired MockMvc mvc;@Autowired ObjectMapper json;
     @Test void localAdministratorIsIdempotentHasOneSubtypeAndCanLogin() throws Exception {
-        String email="demo.admin@museum.local";seed.seed();
+        String email="marija.ilic@museum.local";seed.seed();
         String sql="select a.id,a.lozinka_hash,z.id employee,s.nivo_administracije from korisnicki_nalog a join zaposleni z on z.nalog_id=a.id join administrator s on s.zaposleni_id=z.id where a.email=? and z.tip_zaposlenog='ADMINISTRATOR'";
         var before=jdbc.queryForMap(sql,email);seed.seed();assertThat(jdbc.queryForMap(sql,email)).isEqualTo(before);
         assertThat(encoder.matches(DemoDataSeeder.PASSWORD,(String)before.get("lozinka_hash"))).isTrue();assertThat(before.get("nivo_administracije")).isEqualTo("Nalozi, zaposleni i muzejski program");

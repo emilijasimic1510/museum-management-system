@@ -27,7 +27,14 @@ public class EventService {
     public EventService(EventRepository events,ExhibitionRepository exhibitions,GuideRepository guides,VisitorRepository visitors,EventRegistrationRepository registrations,Clock clock,EmailService email) {
         this.email=email;this.events=events;this.exhibitions=exhibitions;this.guides=guides;this.visitors=visitors;this.registrations=registrations;this.clock=clock;
     }
-    @Transactional(readOnly=true) public List<EventResponse> list() { return events.findAll(Sort.by("id")).stream().map(this::response).toList(); }
+    @Transactional(readOnly=true) public List<EventResponse> list() { return list(false); }
+    @Transactional(readOnly=true) public List<EventResponse> list(boolean browse) {
+        Instant now=clock.instant();
+        return events.findAll(Sort.by("id")).stream()
+                .filter(e -> !browse || (e.getStart().isAfter(now)
+                        && (e.getStatus()==EventStatus.PLANIRAN || e.getStatus()==EventStatus.POPUNJEN)))
+                .map(this::response).toList();
+    }
     @Transactional(readOnly=true) public EventResponse get(Long id) { return response(require(id)); }
     public EventResponse create(EventRequest r) { Event e=new Event();apply(e,r);canManage(e);return response(events.save(e)); }
     public EventResponse update(Long id,EventRequest r) {

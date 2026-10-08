@@ -22,8 +22,20 @@ public class ExhibitionService {
         this.exhibitions = exhibitions; this.halls = halls; this.terms = terms;
     }
     @Transactional(readOnly = true)
-    public List<ExhibitionResponse> list() { return exhibitions.findAll(Sort.by("id")).stream()
-            .filter(e -> staff() || Boolean.TRUE.equals(e.getOnlineVisible())).map(this::response).toList(); }
+    public List<ExhibitionResponse> list() { return list(false); }
+    @Transactional(readOnly = true)
+    public List<ExhibitionResponse> list(boolean browse) {
+        Instant now = Instant.now();
+        return exhibitions.findAll(Sort.by("id")).stream()
+            .filter(e -> staff() || Boolean.TRUE.equals(e.getOnlineVisible()))
+            .filter(e -> !browse || browsable(e, now))
+            .map(e -> browse ? CatalogMapper.exhibition(e, terms.findByExhibitionId(e.getId()).stream()
+                    .filter(t -> t.getEnd().isAfter(now) && (t.getStatus()==TermStatus.OTVOREN || t.getStatus()==TermStatus.POPUNJEN)).toList()) : response(e)).toList();
+    }
+    public static boolean browsable(Exhibition e, Instant now) {
+        return Boolean.TRUE.equals(e.getOnlineVisible()) && e.getEnd().isAfter(now)
+                && (e.getStatus()==ExhibitionStatus.AKTIVNA || e.getStatus()==ExhibitionStatus.PLANIRANA);
+    }
     @Transactional(readOnly = true)
     public ExhibitionResponse get(Long id) {
         Exhibition e=require(id);
