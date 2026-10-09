@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import { translate } from './../core/i18n';
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -7,12 +8,12 @@ import { CuratorState, ManagedAuthorship } from '../core/curator';
 import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
-@Component({selector:'app-curator-authorships',imports:[FormsModule,Feedback,TranslatePipe],template:`
+@Component({selector:'app-curator-authorships',imports:[LocalizedContentPipe,FormsModule,Feedback,TranslatePipe],template:`
 <section class="panel"><h2>{{'uiText.authorships'|t}}</h2><p>{{'uiText.an.authorship.links.an.author.to.an.exhibit.removing.the.link.does.not.delete.'|t}}</p>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 @if(error()){<button class="button secondary" [disabled]="busy()" (click)="load()">{{'qrBoard.retry'|t}}</button>}
 @if(loaded()){
-@for(a of links();track a.authorId){<article class="curator-relation"><h3>{{name(a.authorId)}}</h3><p>{{a.contributionType||('uiText.contribution.type.not.specified'|t)}}</p><p>{{a.note}}</p><div class="curator-actions"><button class="button secondary" [disabled]="busy()" (click)="edit(a)">{{'uiText.edit.authorship'|t}}</button><button class="button danger" [disabled]="busy()" (click)="pending.set(a.authorId)">{{'uiText.remove.link'|t}}</button></div>
+@for(a of links();track a.authorId){<article class="curator-relation"><h3>{{name(a.authorId)}}</h3><p>{{(a|localized:'contributionType')||('uiText.contribution.type.not.specified'|t)}}</p><p>{{a.note}}</p><div class="curator-actions"><button class="button secondary" [disabled]="busy()" (click)="edit(a)">{{'uiText.edit.authorship'|t}}</button><button class="button danger" [disabled]="busy()" (click)="pending.set(a.authorId)">{{'uiText.remove.link'|t}}</button></div>
 @if(pending()===a.authorId){<p role="alert">{{'uiText.remove.this.authorship'|t}}</p><button class="button danger" [disabled]="busy()" (click)="remove(a.authorId)">{{'uiText.confirm.removal'|t}}</button><button class="button secondary" [disabled]="busy()" (click)="pending.set(null)">{{'uiText.cancel'|t}}</button>}</article>}
 @empty{<p class="empty">{{'uiText.no.authors.are.linked.to.this.exhibit'|t}}</p>}
 <h3>{{editing?('uiText.edit.authorship.2'|t):('uiText.link.author'|t)}}</h3>

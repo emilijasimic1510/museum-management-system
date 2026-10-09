@@ -1,0 +1,77 @@
+name: museum-management-production
+
+services:
+  postgres:
+    image: postgres:17.9
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [museum]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  neo4j:
+    image: neo4j:5.26.0-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:?Set NEO4J_USERNAME}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+    volumes: [neo4j_data:/data, neo4j_logs:/logs]
+    networks: [museum]
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u \"$${NEO4J_AUTH%%/*}\" -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1' >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NEO4J_HOST: neo4j
+      NEO4J_BOLT_PORT: 7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      MUSEUM_IMAGE_STORAGE_PATH: /data/images
+      MUSEUM_AUDIO_STORAGE_PATH: /data/audio
+      MUSEUM_TEXT_STORAGE_PATH: /data/text
+    volumes: [museum_runtime:/data]
+    networks: [museum]
+    depends_on:
+      postgres: {condition: service_healthy}
+      neo4j: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/api/health >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      MUSEUM_DOMAIN: ${MUSEUM_DOMAIN:?Set MUSEUM_DOMAIN to your DNS name}
+    ports: ["80:80", "443:443"]
+    networks: [museum]
+    depends_on: [backend]
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  neo4j_logs:
+  museum_runtime:
+networks:
+  museum:
+    driver: bridge

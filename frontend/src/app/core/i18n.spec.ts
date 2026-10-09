@@ -41,6 +41,18 @@ describe('I18n', () => {
     expect(new Set(translationKeys()).size).toBe(translationKeys().length);
   });
 
+  it('retranslates an existing server error with its HTTP status on language switch', () => {
+    const i18n=new I18n();
+    i18n.setLanguage('sr');
+    const original=i18n.t('error.server')+' (500)';
+    i18n.setLanguage('en');
+    const english=i18n.t(original);
+    expect(english).toBe(i18n.t('error.server')+' (500)');
+    expect(english).not.toBe(original);
+    i18n.setLanguage('sr');
+    expect(i18n.t(english)).toBe(original);
+  });
+
   it('does not expose a raw translation key and maps content/payment values', () => {
     const i18n=new I18n(); i18n.setLanguage('en');
     expect(i18n.t('uiText.key.that.does.not.exist')).not.toBe('uiText.key.that.does.not.exist');

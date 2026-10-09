@@ -10,7 +10,7 @@ import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
 @Component({imports:[ImageEditor,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
-<a class="back" [routerLink]="['/collection',kind]">← {{label|t}}</a>
+<a class="back" [routerLink]="['/collection',kind]">{{label|t}}</a>
 <section class="page-heading"><h1>{{mode==='new'?('uiText.new.record'|t):mode==='edit'?('uiText.edit'|t):('uiText.details.2'|t)}} · {{label|t}}</h1></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 @if(!loaded()&&!busy()){<button class="button secondary" (click)="load()">{{'ui.retry'|t}}</button>}

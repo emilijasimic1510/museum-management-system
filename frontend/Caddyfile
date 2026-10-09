@@ -1,0 +1,9 @@
+{$MUSEUM_DOMAIN} {
+    root * /srv
+    encode gzip
+    handle /api/* {
+        reverse_proxy backend:8081
+    }
+    try_files {path} /index.html
+    file_server
+}

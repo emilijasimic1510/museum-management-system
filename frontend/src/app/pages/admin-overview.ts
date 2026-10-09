@@ -9,7 +9,7 @@ import { AdminRole, AdminState, Employee, adminStyles, subtypeFields } from '../
 import { Feedback } from '../shared/feedback';
 
 @Component({imports:[UiLabelPipe,TranslatePipe,RouterLink,Feedback,DatePipe],styles:[adminStyles],template:`
-<section class="page-heading"><p class="eyebrow">ADMINISTRATOR</p><h1>{{profile?('ui.profile'|t):('uiText.system.overview'|t)}}</h1></section>
+<section class="page-heading"><p class="eyebrow">{{'role.ADMINISTRATOR'|t}}</p><h1>{{profile?('ui.profile'|t):('uiText.system.overview'|t)}}</h1></section>
 <app-feedback [busy]="busy()" [error]="error()" /><button class="button secondary" [disabled]="busy()" (click)="load()">{{'uiText.refresh'|t}}</button>
 @if(loaded()){
  @if(profile){

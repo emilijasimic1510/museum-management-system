@@ -47,7 +47,10 @@ class LocalDemoJourneyTests extends PostgresTestBase {
         assertThat(jdbc.queryForObject("select count(*) from vodic v join zaposleni z on z.id=v.zaposleni_id join korisnicki_nalog a on a.id=z.nalog_id where a.email=? and z.tip_zaposlenog='GUIDE' and a.lozinka_hash like '$2%'",Integer.class,DemoDataSeeder.GUIDE_EMAIL)).isEqualTo(1);
         String token=login(DemoDataSeeder.GUIDE_EMAIL);
         long guide=call(get("/api/guides/me"),token,null,200).path("id").asLong();
-        assertThat(jdbc.queryForObject("select count(*) from dogadjaj where vodic_id=? and pocetak>now()",Integer.class,guide)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from dogadjaj where vodic_id=? and pocetak>now() and naziv in ('Razgovor o svetlosti','Radionica boje i pigmenta','Šetnja kroz skulpturu')",Integer.class,guide)).isEqualTo(3);
+        var assigned=jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where vodic_id=? order by id",guide);
+        seed.seed();
+        assertThat(jdbc.queryForList("select id,naziv,pocetak,status from dogadjaj where vodic_id=? order by id",guide)).isEqualTo(assigned);
         Long workshop=jdbc.queryForObject("select id from dogadjaj where naziv='Radionica boje i pigmenta'",Long.class);
         assertThat(call(get("/api/events/"+workshop),null,null,200).path("registeredCount").asLong()).isEqualTo(1);
         call(get("/api/events/"+workshop+"/registrations"),token,null,200);

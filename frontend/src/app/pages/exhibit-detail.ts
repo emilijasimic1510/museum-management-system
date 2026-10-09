@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import { translate } from './../core/i18n';
 import { MediaImage } from '../shared/media-image';
 import { Component, inject } from '@angular/core';
@@ -10,23 +11,23 @@ import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 import { VisitorContent } from '../shared/visitor-content';
 
-@Component({imports:[MediaImage,RouterLink,Feedback,VisitorContent,TranslatePipe],template:`
+@Component({imports:[LocalizedContentPipe,MediaImage,RouterLink,Feedback,VisitorContent,TranslatePipe],template:`
 <a class="back" routerLink="/exhibits">{{'uiText.digital.catalog'|t}}</a>
 <app-feedback [busy]="resource.busy()" [error]="resource.error()" />
 @if(resource.notFound()){<section class="page-heading"><h1>{{'public.exhibitNotFound'|t}}</h1><p>{{'uiText.check.the.address.or.choose.another.exhibit.from.the.catalog'|t}}</p></section>}
 @else if(resource.error()){<button class="button secondary" [disabled]="resource.busy()" (click)="load()">{{'ui.retry'|t}}</button>}
 @if(resource.data();as e){
-  <section class="page-heading"><p class="eyebrow">{{'uiText.digital.catalog.exhibit'|t}}</p><h1>{{e.name}}</h1></section>
-  <app-media-image [path]="'/media/exhibits/'+e.id" [alt]="e.name" [contain]="true" /><div class="detail-layout"><section>
-    <div class="panel"><h2>{{'public.aboutExhibit'|t}}</h2><p class="description">{{e.description || ('uiText.no.exhibit.description.yet'|t)}}</p>
-      <dl class="catalog-facts">@if(e.type){<div><dt>{{'uiText.type.2'|t}}</dt><dd>{{e.type}}</dd></div>}@if(e.material){<div><dt>{{'uiText.material'|t}}</dt><dd>{{e.material}}</dd></div>}@if(e.origin){<div><dt>{{'uiText.origin'|t}}</dt><dd>{{e.origin}}</dd></div>}@if(e.creationPeriod){<div><dt>{{'uiText.creation.period.year'|t}}</dt><dd>{{e.creationPeriod}}</dd></div>}</dl>
+  <section class="page-heading"><p class="eyebrow">{{'uiText.digital.catalog.exhibit'|t}}</p><h1>{{(e|localized:'name')}}</h1></section>
+  <app-media-image [path]="'/media/exhibits/'+e.id" [alt]="e|localized:'name'" [contain]="true" /><div class="detail-layout"><section>
+    <div class="panel"><h2>{{'public.aboutExhibit'|t}}</h2><p class="description">{{(e|localized:'description')|| ('uiText.no.exhibit.description.yet'|t)}}</p>
+      <dl class="catalog-facts">@if(e.type){<div><dt>{{'uiText.type.2'|t}}</dt><dd>{{e.type|t}}</dd></div>}@if(e.material){<div><dt>{{'uiText.material'|t}}</dt><dd>{{(e|localized:'material')}}</dd></div>}@if(e.origin){<div><dt>{{'uiText.origin'|t}}</dt><dd>{{(e|localized:'origin')}}</dd></div>}@if(e.creationPeriod){<div><dt>{{'uiText.creation.period.year'|t}}</dt><dd>{{e.creationPeriod}}</dd></div>}</dl>
     </div>
     <div class="panel"><h2>{{'uiText.in.exhibitions'|t}}</h2><app-feedback [busy]="participations.busy()" [error]="participations.error()" />
       @if(participations.error()){<button class="button secondary" [disabled]="participations.busy()" (click)="loadParticipations()">{{'uiText.reload.exhibitions'|t}}</button>}
-      @if(participations.data();as entries){@for(p of entries;track $index){<article class="route-block"><h3><a [routerLink]="['/exhibitions',p.exhibition.id]">{{p.exhibition.name}}</a></h3><p class="description">{{p.contextDescription || ('uiText.no.contextual.description.yet'|t)}}</p></article>}@empty{<p class="empty-inline">{{'uiText.no.installations.in.publicly.listed.exhibitions.at.the.moment'|t}}</p>}}
+      @if(participations.data();as entries){@for(p of entries;track $index){<article class="route-block"><h3><a [routerLink]="['/exhibitions',p.exhibition.id]">{{(p.exhibition|localized:'name')}}</a></h3><p class="description">{{(p|localized:'contextDescription')|| ('uiText.no.contextual.description.yet'|t)}}</p></article>}@empty{<p class="empty-inline">{{'uiText.no.installations.in.publicly.listed.exhibitions.at.the.moment'|t}}</p>}}
     </div>
   </section><aside>
-    <section class="panel"><h2>{{'uiText.authors.and.authorship'|t}}</h2>@for(a of e.authors;track a.id){<div class="route-block"><h3><a [routerLink]="['/authors',a.id]">{{a.name}}</a></h3>@if(a.contributionType){<p>{{a.contributionType}}</p>}</div>}@empty{<p class="empty-inline">{{'uiText.authorship.information.is.not.available.yet'|t}}</p>}</section>
+    <section class="panel"><h2>{{'uiText.authors.and.authorship'|t}}</h2>@for(a of e.authors;track a.id){<div class="route-block"><h3><a [routerLink]="['/authors',a.id]">{{(a|localized:'name')}}</a></h3>@if(a.contributionType){<p>{{(a|localized:'contributionType')}}</p>}</div>}@empty{<p class="empty-inline">{{'uiText.authorship.information.is.not.available.yet'|t}}</p>}</section>
     <app-visitor-content [exhibitId]="e.id" />
   </aside></div>
 }

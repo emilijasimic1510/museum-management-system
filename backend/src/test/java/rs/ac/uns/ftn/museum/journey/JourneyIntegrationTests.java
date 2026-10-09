@@ -102,14 +102,23 @@ class JourneyIntegrationTests extends PostgresTestBase {
         }
     }
     @Test void pastTicketAndFinishedVisitRemainInVisitorHistory() throws Exception {
-        Fixture f=fixture(3);User owner=user(),cashier=user("CASHIER");
-        JsonNode ticket=buy(f,owner);long id=ticket.path("id").asLong();
-        long visit=enter(f,cashier,ticket);
-        call(post("/api/visits/"+visit+"/finish"),owner,null,200);
-        jdbc.update("update ulaznica set datum_kupovine=now()-interval '2 days',vazi_do=now()-interval '1 day' where id=?",id);
-        jdbc.update("update izlozba set status='ZAVRSENA' where id=?",f.exhibition());
+        Fixture f=fixture(3);User owner=user();
+        // Insert an already historical snapshot; purchased ticket fields are immutable.
+        long[] historyIds=new TransactionTemplate(transactions).execute(s->{
+            jdbc.update("update termin_izlozbe set pocetak=now()-interval '22 hours',kraj=now()-interval '21 hours' where id=?",f.term());
+            long id=jdbc.queryForObject("insert into ulaznica(posetilac_id,termin_id,cenovnik_izlozba_id,cenovnik_vazi_od,kategorija_cene,datum_kupovine,cena_placena,status,qr_token,vazi_do) select v.id,?,c.izlozba_id,c.datum_vazenja_od,c.kategorija,now()-interval '23 hours',c.cena,'KUPLJENA',?,now()-interval '21 hours' from posetilac v cross join cenovnik_izlozbe c where v.nalog_id=? and c.izlozba_id=? returning ulaznica.id",Long.class,f.term(),UUID.randomUUID().toString(),owner.id(),f.exhibition());
+            jdbc.update("insert into transakcija(ulaznica_id,iznos,nacin_placanja,status,datum_transakcije) values (?,12.50,'KARTICA','USPESNA',now()-interval '23 hours')",id);
+            long visit=jdbc.queryForObject("insert into poseta(ulaznica_id,vreme_ulaska,vreme_izlaska,status) values (?,now()-interval '22 hours',now()-interval '21 hours','ZAVRSENA') returning id",Long.class,id);
+            jdbc.update("update ulaznica set status='ISKORISCENA' where id=?",id);
+            jdbc.update("update termin_izlozbe set status='ZAVRSEN' where id=?",f.term());
+            jdbc.update("update izlozba set datum_zavrsetka=now()-interval '21 hours',status='ZAVRSENA' where id=?",f.exhibition());
+            return new long[]{id,visit};
+        });
+        long id=historyIds[0],visit=historyIds[1];
         assertThat(browseExhibition(f.exhibition()).isNull()).isTrue();
-        assertThat(call(get("/api/tickets/me"),owner,null,200).get(0).path("id").asLong()).isEqualTo(id);
+        JsonNode historicTicket=call(get("/api/tickets/me"),owner,null,200).get(0);
+        assertThat(historicTicket.path("id").asLong()).isEqualTo(id);
+        assertThat(Instant.parse(historicTicket.path("validUntil").asText())).isBefore(Instant.now());
         JsonNode history=call(get("/api/visits/me"),owner,null,200).get(0);
         assertThat(history.path("id").asLong()).isEqualTo(visit);
         assertThat(history.path("status").asText()).isEqualTo("ZAVRSENA");

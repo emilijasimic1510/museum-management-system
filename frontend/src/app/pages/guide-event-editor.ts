@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import {UiLabelPipe} from '../core/i18n';
 import { translate } from './../core/i18n';
 import { Component, inject, signal } from '@angular/core';
@@ -11,7 +12,7 @@ import { validCatalogId } from '../core/catalog';
 import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
-@Component({imports:[UiLabelPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
+@Component({imports:[LocalizedContentPipe,UiLabelPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
 <section class="page-heading"><p class="eyebrow">{{'uiText.museum.program.2'|t}}</p><h1>{{id?('uiText.edit.event'|t):('uiText.new.event'|t)}}</h1><a routerLink="/guide/events">{{'uiText.events'|t}}</a></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 @if(!ready()&&error()){<button class="button" (click)="load()" [disabled]="busy()">{{'ui.retry'|t}}</button>}
@@ -21,7 +22,7 @@ import { TranslatePipe } from '../core/i18n';
 <label>{{'ui.status'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="status" [(ngModel)]="status" required>@for(s of statuses;track s){<option [value]="s">{{(s|uiLabel)}}</option>}</select></label>
 <label>{{'event.start'|t}} <span class="required-mark" aria-hidden="true">*</span><input type="datetime-local" name="start" [(ngModel)]="start" required></label><label>{{'event.end'|t}} <span class="required-mark" aria-hidden="true">*</span><input type="datetime-local" name="end" [(ngModel)]="end" required></label>
 <label>{{'event.capacity'|t}} <span class="required-mark" aria-hidden="true">*</span><input type="number" name="capacity" [(ngModel)]="capacity" required min="0" step="1" max="2147483647"></label><label>{{'uiText.language.optional'|t}}<input name="language" [(ngModel)]="language"></label>
-<label>{{'ui.exhibition'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="exhibition" [(ngModel)]="exhibitionId" required><option [ngValue]="null">{{'ui.chooseExhibition'|t}}</option>@for(e of exhibitions();track e.id){<option [ngValue]="e.id">{{e.name}}</option>}@if(missingExhibition()){<option [ngValue]="exhibitionId">{{'uiText.current.exhibition'|t}}{{exhibitionId}} {{'uiText.not.publicly.available'|t}}</option>}</select></label>
+<label>{{'ui.exhibition'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="exhibition" [(ngModel)]="exhibitionId" required><option [ngValue]="null">{{'ui.chooseExhibition'|t}}</option>@for(e of exhibitions();track e.id){<option [ngValue]="e.id">{{(e|localized:'name')}}</option>}@if(missingExhibition()){<option [ngValue]="exhibitionId">{{'uiText.current.exhibition'|t}}{{exhibitionId}} {{'uiText.not.publicly.available'|t}}</option>}</select></label>
 <label>{{'role.GUIDE'|t}}<select name="guide" [(ngModel)]="guideId"><option [ngValue]="null">{{'uiText.no.assigned.guide'|t}}</option>@if(ownGuide();as g){<option [ngValue]="g.id">{{'uiText.me'|t}} {{g.firstName}} {{g.lastName}}</option>}@if(otherGuideId!==null){<option [ngValue]="otherGuideId">{{'uiText.currently.assigned.guide'|t}}{{otherGuideId}}</option>}</select></label></div>
 <p class="muted">{{'uiText.enter.times.in.your.local.time.zone.changing.capacity.cannot.remove.existing.r'|t}}</p>
 @if(form.submitted&&form.invalid){<p class="field-error">{{'uiText.complete.required.fields.and.enter.a.non.negative.integer.capacity'|t}}</p>}

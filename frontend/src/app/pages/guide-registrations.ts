@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import {UiLabelPipe} from '../core/i18n';
 import { translate } from './../core/i18n';
 import { Component, inject, signal } from '@angular/core';
@@ -8,11 +9,11 @@ import { EventState, MuseumEvent, EventRegistration, ManagedRegistration, Regist
 import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
-@Component({imports:[UiLabelPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
+@Component({imports:[LocalizedContentPipe,UiLabelPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
 <section class="page-heading"><p class="eyebrow">{{'uiText.guide.workspace'|t}}</p><h1>{{'uiText.event.registrations'|t}}</h1><a routerLink="/guide/events">{{'uiText.events'|t}}</a></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
-<section class="panel"><label>{{'uiText.event'|t}}<select [ngModel]="selected()" (ngModelChange)="select($event)" [disabled]="busy()"><option [ngValue]="null">{{'uiText.choose.an.event'|t}}</option>@for(e of events();track e.id){<option [ngValue]="e.id">{{e.name}} — {{date(e.start)}}</option>}</select></label><button class="button secondary" (click)="load()" [disabled]="busy()">{{'uiText.refresh.data'|t}}</button></section>
-@if(event();as e){<section class="panel"><h2>{{e.name}}</h2><p>{{(e.status|uiLabel)}} {{'uiText.registered.4'|t}} <span class="capacity">{{e.registeredCount}} / {{e.capacity}}</span> {{'uiText.available.places'|t}} {{remaining(e)}}</p><a [routerLink]="['/guide/events',e.id,'edit']">{{'uiText.edit.event.2'|t}}</a></section>}
+<section class="panel"><label>{{'uiText.event'|t}}<select [ngModel]="selected()" (ngModelChange)="select($event)" [disabled]="busy()"><option [ngValue]="null">{{'uiText.choose.an.event'|t}}</option>@for(e of events();track e.id){<option [ngValue]="e.id">{{(e|localized:'name')}} — {{date(e.start)}}</option>}</select></label><button class="button secondary" (click)="load()" [disabled]="busy()">{{'uiText.refresh.data'|t}}</button></section>
+@if(event();as e){<section class="panel"><h2>{{(e|localized:'name')}}</h2><p>{{(e.status|uiLabel)}} {{'uiText.registered.4'|t}} <span class="capacity">{{e.registeredCount}} / {{e.capacity}}</span> {{'uiText.available.places'|t}} {{remaining(e)}}</p><a [routerLink]="['/guide/events',e.id,'edit']">{{'uiText.edit.event.2'|t}}</a></section>}
 @if(!busy()&&!error()&&!events().length){<p class="empty">{{'uiText.no.events.yet'|t}}</p>}
 @if(!busy()&&!error()&&event()&&!rows().length){<p class="empty">{{'uiText.no.registrations.for.this.event'|t}}</p>}
 <div class="cards">@for(r of rows();track r.visitorId){<article class="panel"><h2>{{r.firstName}} {{r.lastName}}</h2><p>{{'uiText.visitor'|t}}{{r.visitorId}}</p><p>{{'uiText.registered.5'|t}} {{date(r.registeredAt)}}</p><p>{{'uiText.status'|t}} <span class="badge">{{(r.status|uiLabel)}}</span></p><form (ngSubmit)="save(r)"><label>{{'uiText.new.status'|t}}<select [name]="'status-'+r.visitorId" [(ngModel)]="draft[r.visitorId]" [disabled]="busy()">@for(s of statuses;track s){<option [value]="s">{{(s|uiLabel)}}</option>}</select></label><button class="button" type="submit" [disabled]="busy()||draft[r.visitorId]===r.status">{{'uiText.save.status'|t}}</button></form></article>}</div>`})

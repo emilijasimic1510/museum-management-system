@@ -9,7 +9,6 @@ import { qrBoardGuard } from '../core/qr-board';
 import { scanUrl } from '../core/scan';
 import { routes } from '../routes';
 import { toDataURL } from 'qrcode';
-vi.mock('qrcode',()=>({toDataURL:vi.fn().mockResolvedValue('data:image/png;base64,TEST')}));
 const runtime=globalThis as typeof globalThis & {__MUSEUM_CONFIG__?:{publicBaseUrl?:string}};
 describe('Printable QR board',()=>{
   let http:HttpTestingController;
@@ -53,7 +52,10 @@ describe('Printable QR board',()=>{
     expect(scanUrl('a+b/opaque')).toBe('https://museum.example/scan/a%2Bb%2Fopaque');
     const f=await setup(),p=f.componentInstance;await choose(f,[part(1,{qrToken:'a+b/opaque'})]);p.selectAll();p.preview();await settle(f);
     expect(f.nativeElement.textContent).not.toContain('Javna adresa aplikacije nije podešena');
-    await vi.waitFor(()=>expect(toDataURL).toHaveBeenCalledWith('https://museum.example/scan/a%2Bb%2Fopaque',expect.any(Object)));
+    // Check the actual generated image, avoiding a CJS mock shared across bundled chunks.
+    const expectedQr=await toDataURL('https://museum.example/scan/a%2Bb%2Fopaque',{width:240,margin:4,errorCorrectionLevel:'M'});
+    await settle(f);
+    expect(f.nativeElement.querySelector('img')?.getAttribute('src')).toBe(expectedQr);
     const print=vi.spyOn(window,'print').mockImplementation(()=>{});p.print();expect(print).not.toHaveBeenCalled();
     f.nativeElement.querySelector('img').dispatchEvent(new Event('load'));await settle(f);p.print();expect(print).toHaveBeenCalledOnce();
     p.preview();await settle(f);expect(p.printReady()).toBe(false);print.mockRestore();

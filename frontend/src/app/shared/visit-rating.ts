@@ -14,7 +14,7 @@ import { I18n, TranslatePipe } from '../core/i18n';
   <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
   @if(rating();as r){
     <p><strong>{{r.rating}} / 5</strong> · {{r.ratedAt|date:'dd.MM.yyyy. HH:mm'}}</p>
-    @if(r.comment){<p class="description">{{r.comment}}</p>}
+    @if(r.comment){<p class="description">{{r.comment|t}}</p>}
   }@else if(loaded()&&!busy()){
     @if(editable()){
       <form #form="ngForm" (ngSubmit)="save(form)">

@@ -8,6 +8,7 @@ import { CatalogResource } from '../core/catalog';
 import { routes } from '../routes';
 import { App } from '../app';
 import { ExhibitsPage } from './exhibits';
+import { CatalogPage } from './catalog';
 
 const exhibit={id:1,name:'Tišina',description:'Opis zbirke',type:'SLIKA',material:'Ulje',origin:'Srbija',creationPeriod:'2024',authors:[{id:2,name:'Mila Jovanović',contributionType:'Autor'}]};
 const author={id:2,firstName:'Mila',lastName:'Jovanović',biography:'Biografija',birthYear:1988,deathYear:null};
@@ -22,6 +23,18 @@ describe('Public digital catalog',()=>{
   afterEach(()=>{requests.verify();sessionStorage.clear();});
   function role(value:string){const auth=TestBed.inject(Auth);auth.session.set({token:'test-only',expiresAt:Date.now()+60000});auth.currentAccount.set({id:1,email:'test@example.test',roles:[value],active:true,registeredAt:'',lastLogin:null});}
   async function render(harness:RouterTestingHarness){await Promise.resolve();await Promise.resolve();harness.detectChanges();}
+
+  it('requests active browse data and keeps sold-out exhibitions linked to their details',async()=>{
+    const fixture=TestBed.createComponent(CatalogPage);
+    requests.expectOne('/api/museums').flush([]);
+    requests.expectOne('/api/halls').flush([]);
+    const exhibition={id:3,name:'Future exhibition',onlineVisible:true,status:'PLANIRANA',start:'2099-01-01T10:00:00Z',end:'2099-01-02T10:00:00Z',terms:[{id:4,status:'POPUNJEN',capacity:1,start:'2099-01-01T10:00:00Z',end:'2099-01-01T11:00:00Z'}]};
+    requests.expectOne('/api/exhibitions?browse=true').flush([exhibition,{...exhibition,id:5,name:'Past exhibition',end:'2000-01-01T10:00:00Z'}]);
+    await fixture.whenStable();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Past exhibition');
+    expect(fixture.nativeElement.textContent).toContain('Nema mesta');
+    expect(fixture.nativeElement.querySelector('h3 a').getAttribute('href')).toBe('/exhibitions/3');
+  });
 
   for(const signedIn of [false,true])it(`allows ${signedIn?'visitor':'anonymous'} list and detail without exposing private fields`,async()=>{
     if(signedIn)role('VISITOR');

@@ -34,7 +34,7 @@ interface ReportTable {title:string;note:string;columns:string[];rows:string[][]
   }
   <section class="panel manager-section"><h2>{{'uiText.rating.comments'|t}}</h2>
     @if(r.commentsTruncated){<p>{{'uiText.showing.the.latest.200.comments.narrow.the.period.to.view.older.comments'|t}}</p>}
-    @for(c of r.comments;track c.id){<article class="manager-comment"><h3>{{c.exhibition}} · {{c.rating}}/5</h3><p>{{c.ratedAt|date:'dd.MM.yyyy. HH:mm'}}</p><p class="description">{{c.comment}}</p></article>}
+    @for(c of r.comments;track c.id){<article class="manager-comment"><h3>{{c.exhibition}} · {{c.rating}}/5</h3><p>{{c.ratedAt|date:'dd.MM.yyyy. HH:mm'}}</p><p class="description">{{c.comment|t}}</p></article>}
     @empty{<p class="empty">{{'uiText.no.comments.in.the.selected.period'|t}}</p>}
   </section>
   <section class="panel manager-section"><h2>{{'uiText.how.to.read.this.report'|t}}</h2>@for(note of r.limitations;track $index){<p>{{note}}</p>}</section>

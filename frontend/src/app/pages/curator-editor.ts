@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import { translate } from './../core/i18n';
 import { ImageEditor } from '../shared/image-editor';
 import { Component, inject, signal } from '@angular/core';
@@ -13,13 +14,13 @@ import { CuratorAuthorships } from './curator-authorships';
 import { ParticipationQr } from '../shared/participation-qr';
 
 interface Field {key:string;label:string;required?:boolean;type?:string;min?:number}
-@Component({imports:[ImageEditor,FormsModule,RouterLink,Feedback,CuratorAuthorships,ParticipationQr,TranslatePipe],template:`
+@Component({imports:[LocalizedContentPipe,ImageEditor,FormsModule,RouterLink,Feedback,CuratorAuthorships,ParticipationQr,TranslatePipe],template:`
 <section class="page-heading"><p class="eyebrow">{{'uiText.catalog.management'|t}}</p><h1>{{id?('uiText.edit'|t):('uiText.new.record'|t)}} · {{title|t}}</h1><a [routerLink]="base">{{'uiText.back.to.list'|t}}</a></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 @if(!loaded()&&error()){<button class="button" [disabled]="busy()" (click)="load()">{{'ui.retry'|t}}</button>}
 @if(loaded()){<section class="panel"><form #form="ngForm" (ngSubmit)="save(form)"><fieldset [disabled]="busy()">
-@if(kind==='participations'){<div class="form-row"><label>{{'uiText.exhibition.2'|t}}<select name="exhibitionId" [(ngModel)]="model['exhibitionId']" required [disabled]="!!id"><option [ngValue]="null">{{'ui.chooseExhibition'|t}}</option>@for(e of exhibitions();track e.id){<option [ngValue]="e.id">{{e.name}}</option>}</select></label>
-<label>{{'uiText.exhibit'|t}}<select name="exhibitId" [(ngModel)]="model['exhibitId']" required [disabled]="!!id"><option [ngValue]="null">{{'uiText.choose.an.exhibit'|t}}</option>@for(e of exhibits();track e.id){<option [ngValue]="e.id">{{e.name}}</option>}</select></label></div>
+@if(kind==='participations'){<div class="form-row"><label>{{'uiText.exhibition.2'|t}}<select name="exhibitionId" [(ngModel)]="model['exhibitionId']" required [disabled]="!!id"><option [ngValue]="null">{{'ui.chooseExhibition'|t}}</option>@for(e of exhibitions();track e.id){<option [ngValue]="e.id">{{(e|localized:'name')}}</option>}</select></label>
+<label>{{'uiText.exhibit'|t}}<select name="exhibitId" [(ngModel)]="model['exhibitId']" required [disabled]="!!id"><option [ngValue]="null">{{'uiText.choose.an.exhibit'|t}}</option>@for(e of exhibits();track e.id){<option [ngValue]="e.id">{{(e|localized:'name')}}</option>}</select></label></div>
 @if(id){<p class="muted">{{'uiText.an.existing.installation.s.exhibition.and.exhibit.cannot.change.because.of.sca'|t}}</p>}}
 <div class="curator-form-grid">@for(field of fields;track field.key){<label [class.full-width]="field.type==='textarea'">{{field.label}}{{field.required?' *':''}}
 @if(field.type==='textarea'){<textarea [name]="field.key" [(ngModel)]="model[field.key]" [required]="!!field.required" rows="4"></textarea>}

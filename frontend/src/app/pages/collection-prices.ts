@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import { translate } from './../core/i18n';
 import { Component, inject, signal } from '@angular/core';
 import { LocalDatePipe as DatePipe, LocalNumberPipe as DecimalPipe } from '../core/i18n';
@@ -8,12 +9,12 @@ import { CollectionRecord, CollectionState, ManagedPrice, localTimestamp, toInst
 import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
-@Component({imports:[DatePipe,DecimalPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
-<a class="back" [routerLink]="['/collection/exhibitions',id]">{{'uiText.exhibition'|t}}</a><section class="page-heading"><h1>{{'uiText.price.list'|t}}</h1><h2>{{name()}}</h2><p>{{'uiText.price.history.and.validity.by.category.prices.on.tickets.already.sold.are.reta'|t}}</p></section>
+@Component({imports:[LocalizedContentPipe,DatePipe,DecimalPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
+<a class="back" [routerLink]="['/collection/exhibitions',id]">{{'uiText.exhibition'|t}}</a><section class="page-heading"><h1>{{'uiText.price.list'|t}}</h1><h2>{{name()|t}}</h2><p>{{'uiText.price.history.and.validity.by.category.prices.on.tickets.already.sold.are.reta'|t}}</p></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 <button class="text-button" [disabled]="busy()" (click)="load()">{{'uiText.refresh.price.history'|t}}</button>
 @if(loaded()){
-<div class="cards">@for(p of prices();track p.category+p.validFrom){<article class="panel visit-history-card"><h2>{{p.category}}</h2><p class="price-value"><strong>{{p.price|number:'1.2-2'}}</strong></p><p>{{'uiText.from'|t}} {{p.validFrom|date:'dd.MM.yyyy. HH:mm:ss'}}<br>{{'uiText.to'|t}} {{p.validTo?(p.validTo|date:'dd.MM.yyyy. HH:mm:ss'):('ui.openEnded'|t)}}</p><p class="description">{{p.note}}</p><button type="button" class="button secondary" [disabled]="busy()" (click)="edit(p)">{{'uiText.edit.price.period.end'|t}}</button></article>}@empty{<p class="empty">{{'uiText.no.pricing.periods.yet'|t}}</p>}</div>
+<div class="cards">@for(p of prices();track p.category+p.validFrom){<article class="panel visit-history-card"><h2>{{(p|localized:'category')}}</h2><p class="price-value"><strong>{{p.price|number:'1.2-2'}}</strong></p><p>{{'uiText.from'|t}} {{p.validFrom|date:'dd.MM.yyyy. HH:mm:ss'}}<br>{{'uiText.to'|t}} {{p.validTo?(p.validTo|date:'dd.MM.yyyy. HH:mm:ss'):('ui.openEnded'|t)}}</p><p class="description">{{p.note}}</p><button type="button" class="button secondary" [disabled]="busy()" (click)="edit(p)">{{'uiText.edit.price.period.end'|t}}</button></article>}@empty{<p class="empty">{{'uiText.no.pricing.periods.yet'|t}}</p>}</div>
 <form #form="ngForm" class="panel" (ngSubmit)="save(form)"><h2>{{editing()?('uiText.edit.period'|t):('uiText.new.pricing.period'|t)}}</h2>
 <fieldset class="collection-fields" [disabled]="busy()"><div class="collection-grid">
 <label>{{'ui.category'|t}} <span class="required-mark" aria-hidden="true">*</span><input name="category" [(ngModel)]="category" required [readonly]="!!editing()"></label>

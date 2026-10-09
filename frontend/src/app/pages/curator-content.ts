@@ -35,8 +35,8 @@ import { TranslatePipe } from '../core/i18n';
 <section class="panel"><h2>{{editId?('uiText.edit.content'|t):('uiText.add.content'|t)}}</h2><p>{{'uiText.enter.a.reference.to.an.existing.resource.this.form.does.not.upload.or.check.r'|t}}</p>
 <form #form="ngForm" (ngSubmit)="save(form)"><fieldset [disabled]="busy()"><div class="curator-form-grid">
 <label>{{'uiText.type'|t}}<select name="type" [(ngModel)]="type" required><option>TEKST</option><option>SLIKA</option><option>AUDIO</option></select></label>
-<label>{{'nav.language'|t}}<input name="language" [(ngModel)]="language" placeholder="sr"></label>
-<label class="full-width">{{'uiText.content.path.or.url'|t}}<input name="path" [(ngModel)]="path" required placeholder="demo/grad-001.txt"><small>{{'uiText.a.relative.path.or.http.s.url.without.credentials.use.a.resource.intended.for.'|t}}</small></label>
+<label>{{'nav.language'|t}}<input name="language" [(ngModel)]="language" [attr.placeholder]="'content.languageHint'|t"></label>
+<label class="full-width">{{'uiText.content.path.or.url'|t}}<input name="path" [(ngModel)]="path" required [attr.placeholder]="'content.pathHint'|t"><small>{{'uiText.a.relative.path.or.http.s.url.without.credentials.use.a.resource.intended.for.'|t}}</small></label>
 <label>{{'uiText.version.2'|t}}<input name="version" type="number" [(ngModel)]="version" required min="1" step="1"></label>
 <label class="checkbox"><input type="checkbox" name="generated" [(ngModel)]="generated">{{'uiText.automatically.generated.content'|t}}</label></div>
 @if(form.submitted&&form.invalid){<p class="field-error">{{'uiText.check.required.fields.and.the.version'|t}}</p>}

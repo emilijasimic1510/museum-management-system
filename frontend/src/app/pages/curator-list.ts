@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import { translate } from './../core/i18n';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,15 +10,15 @@ import { Exhibition } from '../core/models';
 import { Feedback } from '../shared/feedback';
 import { TranslatePipe } from '../core/i18n';
 
-@Component({imports:[FormsModule,RouterLink,Feedback,TranslatePipe],template:`
+@Component({imports:[LocalizedContentPipe,FormsModule,RouterLink,Feedback,TranslatePipe],template:`
 <section class="page-heading"><p class="eyebrow">{{'uiText.catalog.management'|t}}</p><h1>{{title|t}}</h1><a class="button" [routerLink]="base+'/new'">{{'uiText.add'|t}} {{kind==='authors'?'autora':kind==='exhibits'?'eksponat':('uiText.installation.3'|t)}}</a></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" />
 <label>{{'catalog.search'|t}}<input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" [attr.placeholder]="'uiText.enter.a.name'|t"></label>
 @if(error()){<button class="button secondary" (click)="load()" [disabled]="busy()">{{'qrBoard.retry'|t}}</button>}
 @if(!busy()&&!rows().length&&!error()){<p class="empty">{{'uiText.no.records.yet.add.the.first.record'|t}}</p>}
 @else if(!busy()&&rows().length&&!filtered().length){<p class="empty">{{'uiText.no.results.for.this.search'|t}}</p>}
-<div class="cards">@for(row of filtered();track row.id){<article class="panel catalog-card"><h2>{{row.name}}</h2><p>{{row.description}}</p><div class="curator-actions"><a class="button secondary" [routerLink]="base+'/'+row.id+'/edit'">{{'uiText.edit'|t}}</a><button class="button danger" [disabled]="busy()" (click)="pending.set(row.id)">{{'uiText.delete'|t}}</button></div>
-@if(pending()===row.id){<div class="message" role="alert"><p>{{'uiText.delete.2'|t}}{{row.name}}{{'uiText.this.cannot.be.undone.related.data.may.prevent.deletion'|t}}</p><div class="curator-actions"><button class="button danger" [disabled]="busy()" (click)="remove(row.id)">{{'uiText.confirm.deletion'|t}}</button><button class="button secondary" [disabled]="busy()" (click)="pending.set(null)">{{'uiText.cancel'|t}}</button></div></div>}
+<div class="cards">@for(row of filtered();track row.id){<article class="panel catalog-card"><h2>{{(row|localized:'name')}}</h2><p>{{(row|localized:'description')}}</p><div class="curator-actions"><a class="button secondary" [routerLink]="base+'/'+row.id+'/edit'">{{'uiText.edit'|t}}</a><button class="button danger" [disabled]="busy()" (click)="pending.set(row.id)">{{'uiText.delete'|t}}</button></div>
+@if(pending()===row.id){<div class="message" role="alert"><p>{{'uiText.delete.2'|t}}{{(row|localized:'name')}}{{'uiText.this.cannot.be.undone.related.data.may.prevent.deletion'|t}}</p><div class="curator-actions"><button class="button danger" [disabled]="busy()" (click)="remove(row.id)">{{'uiText.confirm.deletion'|t}}</button><button class="button secondary" [disabled]="busy()" (click)="pending.set(null)">{{'uiText.cancel'|t}}</button></div></div>}
 </article>}</div>
 `})
 export class CuratorList extends CuratorState {

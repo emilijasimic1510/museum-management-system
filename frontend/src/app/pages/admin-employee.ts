@@ -1,3 +1,4 @@
+import { LocalizedContentPipe } from '../core/i18n';
 import {UiLabelPipe} from '../core/i18n';
 import { TranslatePipe, translate } from './../core/i18n';
 import { Component, inject, signal } from '@angular/core';
@@ -8,7 +9,7 @@ import { Account, Museum } from '../core/models';
 import { AdminState, Employee, EmployeeType, adminStyles, subtypeFields } from '../core/admin';
 import { Feedback } from '../shared/feedback';
 
-@Component({imports:[UiLabelPipe,TranslatePipe,FormsModule,RouterLink,Feedback],styles:[adminStyles],template:`
+@Component({imports:[LocalizedContentPipe,UiLabelPipe,TranslatePipe,FormsModule,RouterLink,Feedback],styles:[adminStyles],template:`
 <a routerLink="/admin/employees">{{'uiText.employees'|t}}</a><section class="page-heading"><h1>{{creating?('uiText.new.employee'|t):('uiText.employee.profile'|t)}}</h1><p>{{'uiText.each.employee.has.exactly.one.business.subtype.this.form.does.not.assign.syste'|t}}</p></section>
 <app-feedback [busy]="busy()" [error]="error()" [notice]="notice()" /><button class="text-button" [disabled]="busy()" (click)="load()">{{'qrBoard.retry'|t}}</button>
 @if(loaded()){
@@ -16,7 +17,7 @@ import { Feedback } from '../shared/feedback';
  <form #form="ngForm" class="panel" (ngSubmit)="save(form)"><fieldset class="admin-fields" [disabled]="busy()"><div class="admin-grid">
  <label>{{'uiText.account.2'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="accountId" [(ngModel)]="model.accountId" required [disabled]="!creating"><option [ngValue]="null">{{'uiText.choose.an.account'|t}}</option>@for(a of availableAccounts();track a.id){<option [ngValue]="a.id">{{a.email}} (#{{a.id}})</option>}</select></label>
  <label>{{'uiText.business.subtype'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="type" [(ngModel)]="model.type" (ngModelChange)="detail=''" required [disabled]="!creating">@for(t of types;track t){<option [ngValue]="t">{{t|uiLabel:'role'}}</option>}</select></label>
- <label>{{'catalog.museum'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="museumId" [(ngModel)]="model.museumId" required><option [ngValue]="null">{{'qrBoard.chooseMuseum'|t}}</option>@for(m of museums();track m.id){<option [ngValue]="m.id">{{m.name}}{{m.active?'':" "+('uiText.inactive.label'|t)}}</option>}</select></label>
+ <label>{{'catalog.museum'|t}} <span class="required-mark" aria-hidden="true">*</span><select name="museumId" [(ngModel)]="model.museumId" required><option [ngValue]="null">{{'qrBoard.chooseMuseum'|t}}</option>@for(m of museums();track m.id){<option [ngValue]="m.id">{{(m|localized:'name')}}{{m.active?'':" "+('uiText.inactive.label'|t)}}</option>}</select></label>
  <label>{{'login.firstName'|t}} <span class="required-mark" aria-hidden="true">*</span><input name="firstName" [(ngModel)]="model.firstName" required></label><label>{{'login.lastName'|t}} <span class="required-mark" aria-hidden="true">*</span><input name="lastName" [(ngModel)]="model.lastName" required></label>
  <label>{{'uiText.phone.optional'|t}}<input type="tel" name="phone" [(ngModel)]="model.phone"></label>
  <label>{{'uiText.employment.date'|t}} <span class="required-mark" aria-hidden="true">*</span><input type="date" name="hiredOn" [(ngModel)]="model.hiredOn" required></label>

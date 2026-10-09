@@ -18,6 +18,8 @@ export interface OwnGuide { id:number; firstName:string; lastName:string; primar
 export const eventStatuses:EventStatus[]=['PLANIRAN','POPUNJEN','ZAVRSEN','OTKAZAN'];
 export const eventTypes:EventType[]=['TURA','PREDAVANJE','RADIONICA'];
 export const registrationStatuses:RegistrationStatus[]=['PRIJAVLJEN','PRISUSTVOVAO','OTKAZAN'];
+export function browsableEvent(e:MuseumEvent,now=Date.now()){return ['PLANIRAN','POPUNJEN'].includes(e.status)&&Date.parse(e.start)>now;}
+export function eventSoldOut(e:MuseumEvent){return e.status==='POPUNJEN'||e.registeredCount>=e.capacity;}
 export function registrationOpen(e:MuseumEvent,now=Date.now()){return e.status==='PLANIRAN' && Date.parse(e.start)>now && e.registeredCount<e.capacity;}
 export function eventDate(value:string){return new Intl.DateTimeFormat(uiLocale(),{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));}
 export function localDay(value:string){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}

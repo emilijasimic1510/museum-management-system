@@ -27,6 +27,16 @@ describe('Visitor visit lifecycle',()=>{
     http.expectOne('/api/visits/3/routes').flush([]);
   }
   function ratingPanel(){const f=TestBed.createComponent(VisitRatingPanel);f.componentRef.setInput('visitId',3);f.detectChanges();return f;}
+  it('submits a camera QR once and opens the returned exhibit content',async()=>{
+    const f=TestBed.createComponent(VisitDetailPage);respondVisit(false);await render(f);
+    expect(f.nativeElement.querySelector('input[name="qr"]')).toBeNull();
+    f.componentInstance.performScan('/scan/EXHIBIT-15');f.componentInstance.performScan('/scan/EXHIBIT-15');
+    const req=http.expectOne('/api/visits/3/scans');expect(req.request.body).toEqual({qrToken:'EXHIBIT-15'});req.flush(scanned);
+    await vi.advanceTimersByTimeAsync(0);respondVisit(false);await render(f);
+    expect(f.nativeElement.querySelector('.scanned-exhibit').textContent).toContain('Jutro na trgu');
+    expect(f.componentInstance.lastScan()?.participation.participationId).toBe(15);
+    http.expectNone(r=>r.url.includes('local-demo'));
+  });
   function noRating(){http.expectOne('/api/visits/3/rating').flush(null,{status:404,statusText:'Not Found'});}
   function submit<T>(f:ComponentFixture<T>){f.nativeElement.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));}
   function enterRating(f:ComponentFixture<VisitRatingPanel>,score:number,comment=''){
@@ -38,7 +48,7 @@ describe('Visitor visit lifecycle',()=>{
 
   it('finishes an active visit, removes scan controls and shows preserved names and the rating form',async()=>{
     const f=TestBed.createComponent(VisitDetailPage);respondVisit(false);await render(f);
-    http.expectOne('/api/local-demo/enabled').flush({enabled:false});await render(f);
+    http.expectNone('/api/local-demo/enabled');
     expect(f.nativeElement.querySelector('app-visit-rating')).toBeNull();
     expect(f.nativeElement.textContent).toContain('Završi posetu');
     f.componentInstance.confirmFinish.set(true);f.detectChanges();f.componentInstance.finish();f.componentInstance.finish();
@@ -54,7 +64,7 @@ describe('Visitor visit lifecycle',()=>{
   });
   it('keeps the visit active when finish fails and permits retry',async()=>{
     const f=TestBed.createComponent(VisitDetailPage);respondVisit(false);await render(f);
-    http.expectOne('/api/local-demo/enabled').flush({enabled:false});await render(f);
+    http.expectNone('/api/local-demo/enabled');
     f.componentInstance.confirmFinish.set(true);f.componentInstance.finish();
     http.expectOne('/api/visits/3/finish').flush({message:'PRIVATE EXCEPTION'},{status:500,statusText:'Failure'});await render(f);
     expect(f.componentInstance.visit()?.status).toBe('AKTIVNA');expect(f.componentInstance.busy()).toBe(false);

@@ -8,7 +8,7 @@ export interface Hall { id:number; museumId:number; name:string; capacity:number
 export interface Term { id:number; exhibitionId:number; start:string; end:string; capacity:number; status:string }
 export interface Exhibition { id:number; hallId:number; name:string; description:string|null; start:string; end:string; status:string; onlineVisible:boolean; terms:Term[] }
 export interface Price { exhibitionId:number; validFrom:string; validTo:string|null; category:string; price:number }
-export interface Ticket { id:number; visitorId:number|null; termId:number; exhibitionId:number; category:string; purchasedAt:string; paidPrice:number; status:string; qrToken:string; validUntil:string }
+export interface Ticket { exhibitionName?:string; id:number; visitorId:number|null; termId:number; exhibitionId:number; category:string; purchasedAt:string; paidPrice:number; status:string; qrToken:string; validUntil:string }
 export interface Visit { id:number; ticketId:number; enteredAt:string; exitedAt:string|null; status:string; exhibitionId:number; exhibitionName:string }
 export interface VisitRating { id:number; visitId:number; rating:number; comment:string|null; ratedAt:string }
 export interface Recommendation { participationId:number; exhibitId:number; name:string; explanation:string }
