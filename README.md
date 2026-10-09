@@ -1,36 +1,36 @@
 # Museum Management System
 
-Informacioni sistem za muzejske zbirke, izložbe, korisnike, događaje, prodaju ulaznica i digitalno vođenje posetilaca. Projekat za diplomski rad implementira sva tri podsistema: katalog; korisnike/zaposlene/događaje; prodaju/posete/preporuke.
+An information system for museum collections, exhibitions, accounts, events, ticket sales, and digital visitor guidance. The thesis project implements all three subsystems: the catalog; users, employees, and events; and sales, visits, and recommendations.
 
-Angular 21.2 i TypeScript 5.9; Java 21, Spring Boot 3.5.16, Maven Wrapper 3.9.11; PostgreSQL 17.9 i Neo4j 5.26. PostgreSQL je izvor poslovnih podataka, Neo4j izvedena projekcija za preporuke. Flyway V1–V3 upravlja šemom, Hibernate je samo validira.
+The stack comprises Angular 21.2, TypeScript 5.9, Java 21, Spring Boot 3.5.16, Maven Wrapper 3.9.11, PostgreSQL 17.9, and Neo4j 5.26. PostgreSQL is the source of business data; Neo4j is a derived recommendation projection. Flyway V1–V3 manages the schema, while Hibernate validates it.
 
-## Implementirano
+## Implemented features
 
-- Javni katalog muzeja, izložbi, eksponata i autora; filteri i dostupni termini.
-- Registracija, JWT prijava, posetilački profil, interesovanja i saglasnost za preporuke.
-- Kupovina, transakcije, blagajnička prodaja i jednokratna validacija ulaznice; aktivna poseta, skeniranje QR koda učešća eksponata, digitalni tekst/slika/audio, završetak i ocena.
-- Curator: zbirka, postavke, kontekstualni sadržaj, cenovnici/termini i QR tabla. Cashier: prodaja i validacija. Guide: događaji i prijave. Manager: pregled agregata. Administrator: nalozi, uloge i zaposleni.
-- SR/EN interfejs, verzionisanje teksta i generisanog zvuka, skladištenje slika, opciona SMTP obaveštenja.
-- Neo4j rangiranje i PostgreSQL rezervni redosled kada nema dostupnog grafa/podataka/saglasnosti. BLIZINA koristi razliku u redosledu obilaska, ne metre ili prostorne koordinate.
+- Public museum, exhibition, exhibit, and author catalogs, with filters and available admission times.
+- Registration, JWT login, visitor profiles, recommendation consent, and an API for managing visitor interests.
+- Ticket purchases, payment records, counter sales, and single-use ticket validation; active visits, exhibit participation QR scanning, digital text/images/audio, visit completion, and ratings.
+- Curator tools for collections, exhibition participation, contextual content, prices, admission times, and QR boards. Cashier sales and validation. Guide events and registrations. Manager aggregate reports. Administrator accounts, roles, and employees.
+- Serbian/English UI, versioned text and generated audio, image storage, and optional SMTP notifications.
+- Neo4j ranking with a PostgreSQL fallback when the graph, useful data, or consent is unavailable. The `BLIZINA` criterion uses differences in tour order, not meters or spatial coordinates.
 
-`local` profil zahteva autentifikaciju i odgovarajuće uloge za zaštićene operacije. Nije zaobilaženje RBAC-a. Lokalni seed i simulacija plaćanja služe demonstraciji; javno produkciono plaćanje nije povezano sa stvarnim procesorom.
+The `local` profile enforces authentication and role permissions. Local seed data and simulated payments support demonstrations; no real public payment processor is connected.
 
-## Pokretanje na Windows-u
+## Running on Windows
 
-Preduslovi: Java 21 na PATH, Node.js 22.12+ (podržana Angular 21 verzija), npm, Docker Desktop sa Linux kontejnerima. Za stvarno generisanje zvuka instalirati eSpeak NG ili podesiti drugi implementirani TTS provider.
+Requirements: Java 21 on PATH, Node.js 22.12+ compatible with Angular 21, npm, and Docker Desktop using Linux containers. Install eSpeak NG or configure another implemented TTS provider to generate actual audio.
 
-U PowerShell-u iz korena projekta:
+From the project root in PowerShell:
 
 ```powershell
-# Samo ako .env već ne postoji. Ne prepisuje postojeća podešavanja.
+# Create the file only if it does not already exist.
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 docker compose up -d
 ```
 
-U `.env` postaviti vlastite `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` (podrazumevano 15432), `NEO4J_USERNAME` (neo4j), `NEO4J_PASSWORD`, `NEO4J_HTTP_PORT` (7474), `NEO4J_BOLT_PORT` (7687), `BACKEND_PORT` (8081). Postojeći Docker volume zadržava ranije inicijalizovane kredencijale: samo izmena `.env` ne menja lozinku u postojećoj bazi. Ne koristiti `docker compose down -v` za redovno pokretanje.
+Set your own `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` (default 15432), `NEO4J_USERNAME` (neo4j), `NEO4J_PASSWORD`, `NEO4J_HTTP_PORT` (7474), `NEO4J_BOLT_PORT` (7687), and `BACKEND_PORT` (8081). Existing Docker volumes retain their original database credentials: editing `.env` alone does not change an existing database password. Do not use `docker compose down -v` for routine startup.
 
-U istom terminalu pripremiti JWT ključ i pokrenuti backend:
+In the same terminal, prepare the JWT key and start the backend:
 
 ```powershell
 $jwtBytes = New-Object byte[] 48
@@ -44,9 +44,9 @@ cd backend
 .\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
 ```
 
-`JWT_SECRET` se čita direktno iz procesnog okruženja; samo upis u `.env` nije dovoljan. Mora imati najmanje 32 UTF-8 bajta. Primer generiše nov ključ bez prikazivanja; promena ključa poništava stare JWT sesije. Za trajno okruženje ključ sačuvati u privatnoj konfiguraciji van repozitorijuma i ponovo koristiti. Ne dodavati tajne u Git.
+`JWT_SECRET` is read directly from the process environment; adding it only to `.env` is insufficient. It must contain at least 32 UTF-8 bytes. This example generates a new key without displaying it; changing the key invalidates previous JWT sessions. For persistent environments, keep and reuse a private key outside the repository. Never commit secrets.
 
-U drugom terminalu:
+In a second terminal, starting from the project root:
 
 ```powershell
 cd frontend
@@ -54,50 +54,68 @@ npm ci
 npm start
 ```
 
-Otvoriti http://localhost:4200. Angular prosleđuje `/api` na 127.0.0.1:8081 kroz `frontend/proxy.conf.json`. Ako promenite backend port, promeniti i proxy. Lokalni API: http://localhost:8081/api/health; Swagger: http://localhost:8081/swagger-ui.html (samo local). Health endpoint je liveness provera, ne potvrđuje ispravnost svih zavisnosti.
+Open [the application](http://localhost:4200). Angular proxies `/api` to `127.0.0.1:8081` through `frontend/proxy.conf.json`. Update the proxy if the backend port changes. The local [health endpoint](http://localhost:8081/api/health) is a liveness check, not a complete dependency readiness check. [Swagger UI](http://localhost:8081/swagger-ui.html) is available in the local profile.
 
-Lokalni seed nalozi su `ana.petrovic@museum.local` (VISITOR), `milica.jovanovic@museum.local` (CASHIER), `nikola.markovic@museum.local` (CURATOR), `jelena.stojanovic@museum.local` (GUIDE), `ivan.nikolic@museum.local` (MANAGER), `marija.ilic@museum.local` (ADMINISTRATOR). Lokalna lozinka definisana je u `DemoDataSeeder.PASSWORD`; ovde se ne objavljuje. Registracija pravi nov posetilački nalog. Seed ne treba koristiti na javnom serveru.
+### Local accounts
 
-## Kamera, mediji i jezici
+| Email | Role |
+|---|---|
+| ana.petrovic@museum.local | VISITOR |
+| milica.jovanovic@museum.local | CASHIER |
+| nikola.markovic@museum.local | CURATOR |
+| jelena.stojanovic@museum.local | GUIDE |
+| ivan.nikolic@museum.local | MANAGER |
+| marija.ilic@museum.local | ADMINISTRATOR |
 
-Kamera telefona zahteva dozvolu i pouzdan HTTPS origin. Običan `http://IP-racunara:4200` nije dovoljan; sama zamena `http` sa `https` ne postavlja TLS. HTTPS reverse proxy/tunel mora prosleđivati i frontend i `/api`. `frontend/public/runtime-config.js` određuje API i javni URL za QR kodove. Na telefonu QR ne sme sadržati `localhost`. Samopotpisani sertifikat nije pouzdano rešenje bez instaliranja poverenja na telefonu.
+The local password is defined in `DemoDataSeeder.PASSWORD` and is not reproduced here. Registration creates a new visitor account. Do not expose local seed accounts on a public server.
 
-## Testiranje QR skeniranja telefonom
+## Camera, media, and languages
 
-QR skeniranje proverava token učešća eksponata u okviru konkretne aktivne posete. Zato ulaznica, poseta i QR tabla moraju pripadati istoj izložbi. Isti muzej sam po sebi nije dovoljan.
+Phone camera access requires permission and a trusted HTTPS origin. An ordinary `http://computer-IP:4200` address is insufficient; replacing `http` with `https` does not configure TLS. An HTTPS reverse proxy or tunnel must forward both the frontend and `/api`. `frontend/public/runtime-config.js` controls the API and public QR URL configuration. A QR URL used on a phone must not contain `localhost`. A self-signed certificate requires explicit trust on the phone.
 
-Za test na računaru, pokrenuti baze, backend i frontend, prijaviti se kao posetilac, otvoriti aktivnu posetu i kliknuti `Skeniraj eksponat`. Dozvoliti kameru računara i usmeriti je ka QR kodu sa kustoske QR table. Alternativno se može koristiti QR token kao ručna provera, ali to ne proverava fizičku kameru.
+### Testing QR scanning with a phone
 
-Za test telefonom, u jednom CMD prozoru frontend mora da radi na portu 4200, a u drugom pokrenuti:
+A scan identifies an exhibit's participation in a particular exhibition. The ticket, active visit, and QR board must refer to the same exhibition. Sharing a museum is not sufficient.
 
-```cmd
-cloudflared tunnel --url http://localhost:4200
-```
+1. Start the databases, backend, and frontend. Keep their terminals running.
+2. In a separate CMD window, start the HTTPS tunnel:
 
-Cloudflare ispisuje privremenu adresu oblika `https://....trycloudflare.com`. Tu istu HTTPS adresu otvoriti na računaru i telefonu. Kustos mora otvoriti QR tablu preko te HTTPS adrese, izabrati muzej i istu izložbu za koju je posetiocu blagajnik validirao ulaznicu, pa tek onda kliknuti `Pregled`/generisati QR tablu. QR kod treba štampati ili prikazati na drugom ekranu. Posetilac na telefonu otvara istu HTTPS adresu, prijavljuje se, ulazi u aktivnu posetu, klikne `Skeniraj eksponat`, dozvoljava kameru i skenira novi QR kod.
+   ```cmd
+   cloudflared tunnel --url http://localhost:4200
+   ```
 
-QR kod generisan na `http://localhost:4200` ne treba skenirati na telefonu preko Cloudflare adrese, jer URL u QR kodu pripada drugom originu. Ako se `cloudflared` ponovo pokrene i dobije novu adresu, QR tabla se mora ponovo generisati dok je kustos prijavljen na toj novoj adresi. Poruka da QR URL mora pripadati ovom muzeju najčešće znači da je korišćena stara tabla, druga izložba ili druga HTTPS adresa.
+3. Copy the current `https://....trycloudflare.com` address printed by Cloudflare. Open this same address on both the computer and phone.
+4. If Angular reports **Blocked request**, add the exact current hostname, without `https://` or a path, to `serve.options.allowedHosts` in `frontend/angular.json`. Preserve existing entries and restart `npm start`. The string `"all"` is not a wildcard hostname.
+5. As a visitor, purchase a ticket for an admission time that can currently be validated. As a cashier, validate that ticket for the matching admission time. This creates the active visit.
+6. In a separate browser session on the computer, sign in as the curator using the same HTTPS address. Open the QR board, select the museum and the exhibition matching the visitor's ticket, and generate the preview. Print it or display it on another screen.
+7. On the phone, sign in as the visitor, open the active visit, select **Scan exhibit**, allow camera access, and scan an exhibit QR code from the newly generated board.
+8. Confirm that the exhibit title, contextual text, image, and prepared audio are available. Repeated exhibit scans are recorded; repeated ticket validation is rejected. Scanning after the visit has finished is not allowed.
 
-Posle uspešnog skena treba da se prikažu naziv eksponata, kontekstualni tekst, slika i audio ako su pripremljeni. Ponovljeni sken istog eksponata u istoj poseti je odbijen, a sken posle završetka posete više nije dozvoljen. Tunnel je privremen i važi samo dok je njegov CMD prozor otvoren.
+A board generated from `http://localhost:4200` or an old tunnel URL can fail the frontend's same-origin QR URL check. The message about the QR URL belonging to this museum can therefore indicate a hostname mismatch. A QR participation from another exhibition also fails the separate backend exhibition check.
 
-Digitalni sadržaj pripada učešću eksponata na konkretnoj izložbi. Za posetilački pristup potreban je odgovarajući tok ulaznice i posete. Kustos čuva tekst, a zatim posebno pokreće generisanje zvuka; čuvanje teksta samo po sebi ne generiše audio.
+If restarting the tunnel produces a new hostname, use that new address on both devices, update the allowed host if needed, and regenerate the QR board. The tunnel remains available only while its process is running. A direct API request with a QR token can test backend behavior, but does not test the camera. The visitor scanner does not require a manual URL field.
 
-TTS: `MUSEUM_TTS_PROVIDER=espeak` i `MUSEUM_TTS_ESPEAK_PATH`; alternativno `azure` uz `MUSEUM_TTS_AZURE_KEY`, `MUSEUM_TTS_AZURE_REGION`, `MUSEUM_TTS_AZURE_VOICE`, ili `piper` uz `MUSEUM_TTS_PIPER_PYTHON` i `MUSEUM_TTS_PIPER_MODEL`. Odgovarajući izvršni program/model/glas mora biti stvarno dostupan. Putanje skladišta: `MUSEUM_AUDIO_STORAGE_PATH`, `MUSEUM_TEXT_STORAGE_PATH`, `MUSEUM_IMAGE_STORAGE_PATH` (podrazumevano `backend/runtime/...` pri pokretanju iz backend direktorijuma).
+A computer camera can also be tested through the active visit's **Scan exhibit** action, with the QR code displayed on another device.
 
-UI prevodi su u `frontend/src/app/core/i18n.ts`. Za sadržaj SR koristi srpski tekst, EN koristi postojeći prevod i vraća SR ako prevod ne postoji. Deo seed prevoda je mapiran u frontend rečniku: ovo nije opšti automatski prevodilac proizvoljnog novog sadržaja.
+### Content and TTS
 
-SMTP je isključen dok se ne postavi `MUSEUM_MAIL_ENABLED=true`. Podesiti host/port, privatne kredencijale, from i TLS preko `MUSEUM_MAIL_*` varijabli iz `application.yml`. Bez toga uspeh poslovne operacije nije dokaz isporučene e-pošte.
+Digital content belongs to an exhibit participation in a specific exhibition. Visitor access requires the appropriate ticket and visit flow. The curator saves text and then explicitly generates audio; saving text alone does not generate audio.
 
-## Provere
+For eSpeak, configure `MUSEUM_TTS_PROVIDER=espeak` and `MUSEUM_TTS_ESPEAK_PATH`. Alternatives are `azure` with `MUSEUM_TTS_AZURE_KEY`, `MUSEUM_TTS_AZURE_REGION`, and `MUSEUM_TTS_AZURE_VOICE`, or `piper` with `MUSEUM_TTS_PIPER_PYTHON` and `MUSEUM_TTS_PIPER_MODEL`. The executable, model, or service voice must actually be available. Storage settings are `MUSEUM_AUDIO_STORAGE_PATH`, `MUSEUM_TEXT_STORAGE_PATH`, and `MUSEUM_IMAGE_STORAGE_PATH`; their defaults resolve under `backend/runtime/...` when started from the backend directory.
 
-Docker Desktop mora raditi. Backend testovi koriste sopstveni PostgreSQL Testcontainer, a test grafa zaseban Neo4j; ne resetuju lokalnu demonstracionu bazu. Sa postavljenim procesnim `JWT_SECRET`:
+UI translations are maintained in `frontend/src/app/core/i18n.ts`. Serbian mode uses Serbian content; English mode uses an available English translation and falls back to Serbian when it is absent. Some seed translations are mapped in the frontend dictionary; this is not an automatic translator for arbitrary new content.
+
+SMTP is disabled until `MUSEUM_MAIL_ENABLED=true`. Configure the host, port, private credentials, sender, and TLS through the `MUSEUM_MAIL_*` variables in `application.yml`. Successful business operations alone do not demonstrate email delivery.
+
+## Verification
+
+Docker Desktop must be running. Backend tests use a separate PostgreSQL Testcontainer, and graph tests use a separate Neo4j container. They do not reset the local demonstration database. With a process-level `JWT_SECRET` configured, run from the backend directory:
 
 ```powershell
-cd backend
 .\mvnw.cmd clean test package
 ```
 
-Iz frontend direktorijuma:
+From the frontend directory:
 
 ```powershell
 npm test
@@ -105,6 +123,6 @@ npx --no-install tsc --noEmit -p tsconfig.app.json
 npm run build
 ```
 
-Rezultat pakovanja je `backend/target/museum-backend-*.jar`; frontend build je `frontend/dist/museum/browser`. Proizvodni Angular build nije dokaz da je aplikacija javno postavljena. Deployment fajlovi u repozitorijumu nisu potvrda spremnosti kompletnog produkcionog okruženja.
+The packaged backend is `backend/target/museum-backend-*.jar`; the frontend output is `frontend/dist/museum/browser`. A production Angular build does not mean the application is publicly deployed. Deployment files alone do not establish production readiness.
 
-Aktuelni rezultati, odstupanja od specifikacije/EER-a, preostale ručne provere i tok odbrane: [submission-readiness](docs/submission-readiness.md). Raniji datirani izveštaji opisuju ranija stanja i nisu dokaz prolaza trenutne verzije.
+See the [submission readiness report](docs/submission-readiness.md) for the recorded audit results, specification/EER differences, outstanding manual checks, and defense sequence. Dated reports describe their respective snapshots and do not prove that a later revision passes.

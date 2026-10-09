@@ -1,53 +1,42 @@
-# Verifikacija podsistema 3
+# Subsystem 3 verification
 
-## Swagger provera, 22. septembar 2026.
+## Historical review — 2026-09-22
 
-Završni `mvnw.cmd clean test`: **BUILD SUCCESS**, 69 testova, 0 failures,
-0 errors, 0 skipped (4 min 19 s). PostgreSQL/Testcontainers, Neo4j i OpenAPI
-testovi su uključeni. Lokalni zapis izvršenja: `swagger-final-tests.log`.
+The final `mvnw.cmd clean test` recorded **BUILD SUCCESS**, with 69 tests, 0 failures, 0 errors, and 0 skipped, in 4 minutes 19 seconds. PostgreSQL Testcontainers, Neo4j, and OpenAPI tests were included. The local execution artifact was `swagger-final-tests.log`. These are historical results, not a rerun for a later revision.
 
-Springdoc 2.8.17 prikazuje 87 REST operacija na 49 putanja. U `local`
-profilu `/swagger-ui/index.html`, `/v3/api-docs` i `/v3/api-docs.yaml`
-vraćaju 200. Dokumentacija je podrazumevano isključena u ostalim profilima.
-Postojeća pravila autentifikacije i uloga poslovnih ruta nisu proširena.
+Springdoc 2.8.17 exposed 87 REST operations on 49 paths at that date. In the local profile, `/swagger-ui/index.html`, `/v3/api-docs`, and `/v3/api-docs.yaml` returned 200. Documentation was disabled by default outside local; business-route authentication and role restrictions remained in place.
 
-Kroz Swagger **Try it out → Execute** provereno je:
+Swagger **Try it out → Execute** checks recorded:
 
-| Operacija | Rezultat |
-| --- | --- |
-| GET `/api/health` | 200, UP |
-| GET `/api/events` | 200, prazna lista |
-| GET `/api/tickets/me` bez tokena | 401 |
+| Operation | Result |
+|---|---|
+| GET /api/health | 200, UP |
+| GET /api/events | 200, empty list |
+| GET /api/tickets/me without a token | 401 |
 
-OpenAPI testovi porede sve registrovane API operacije sa specifikacijom i
-proveravaju javnu dokumentaciju uz zadržanu zaštitu poslovnih ruta.
-Email je identifikator za prijavu; `accessToken` iz odgovora na login unosi
-se u Swagger Authorize bez prefiksa `Bearer`.
+OpenAPI tests compared registered API operations against the specification and checked public documentation alongside protected business routes. Email was the login identifier; Swagger Authorize accepted the login response's `accessToken` without a manually added Bearer prefix.
 
-Implementirano je sedam tabela u V3 migraciji: `ulaznica`, `transakcija`, `poseta`, `skeniranje_eksponata`, `ocena_izlozbe`, `preporucena_ruta` i `stavka_rute`. V1 i V2 migracije nisu menjane.
+## Schema and behavior
 
-Backend paket `rs.ac.uns.ftn.museum.journey` sadrži sedam JPA entiteta, jedan složeni ključ i pet enum tipova, sedam repository interfejsa, DTO/mapper, kontrolere za prodaju, posete i preporuke, servise za prodaju, validaciju, skeniranje, ocene, rute, preporuke, održavanje statusa i Neo4j projekciju.
+V3 introduced seven tables: `ulaznica`, `transakcija`, `poseta`, `skeniranje_eksponata`, `ocena_izlozbe`, `preporucena_ruta`, and `stavka_rute`. V1/V2 were unchanged.
 
-Prvi cilj V3 provere je uspešno ostvaren: izolovani Testcontainers PostgreSQL je primenio V1, V2 i V3; Hibernate `ddl-auto=validate` je inicijalizovao 31 entitet; `JourneyIntegrationTests` ima 14 testova i svi su prošli. Testovi pokrivaju snapshot cene, email/visitor vlasništvo, neuspešno plaćanje i retry, refundaciju, konkurentnu kupovinu poslednjeg mesta, QR validaciju samo jednom, anonimnu blagajničku prodaju, posetu, skeniranje, rutu, ocenu, istek statusa i DB kardinalitete.
+The journey package included seven entities, a composite key, five enum types, seven repositories, DTOs/mapping, sales/visit/recommendation controllers, and services for sales, validation, scanning, ratings, routes, recommendations, lifecycle maintenance, and graph projection.
 
-Neo4j provera je otkrila i implicitno grupisanje u Cypher izrazu za score. Broj zajedničkih autora izdvojen je u WITH agregaciju pre računanja score-a. Timeout sinhronizacije je 30 sekundi, čitanja 10 sekundi, uz testni heap 256/512 MB.
+Isolated PostgreSQL applied V1–V3 and Hibernate validated 31 entities. All 14 JourneyIntegrationTests passed, covering price snapshots, ownership, declined payment/retry, simulated refunds, concurrent last-place purchase, single-use ticket validation, anonymous counter sales, visits, scans, routes, ratings, expiry, and cardinalities.
 
-Razvojni PostgreSQL i Neo4j su healthy. Flyway istorija potvrđuje V1, V2 i V3 sa success=true. Lokalna aplikacija na portu 8081 uspešno je prošla Hibernate validate; GET /api/health vraća 200 i UP.
+Neo4j verification found implicit grouping in a Cypher score expression. Shared-author counting was moved to a WITH aggregation before scoring. Synchronization/read timeouts were 30/10 seconds, with a 256/512 MB test heap.
 
-Provere bezbednosti i granica: V3 ne dodaje username, ne menja odobrene dokumente/EER, nema stvarne naplate, JWT/QR tokeni se ne ispisuju, Neo4j projekcija ne prenosi naloge/email/telefone/transakcije, a istorijski zapisi se ne brišu.
+Development PostgreSQL/Neo4j were healthy, Flyway recorded three successful migrations, and the local backend on 8081 passed Hibernate validation and returned health UP. The review added no separate username field, altered no approved EER/specification, performed no real charges, published no JWT/QR tokens, and exported no personal account/payment data to Neo4j. Historical records were preserved.
 
-Komande za konačnu lokalnu proveru:
+## Repeating verification
 
-```powershell
-$env:JWT_SECRET = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot'
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-docker compose config --quiet
-docker compose up -d
-cd backend
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
+Follow the [root setup guide](../README.md) for Java 21, Docker, and a process-level JWT_SECRET. From `backend`:
+
+```cmd
+mvnw.cmd clean test
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Zatim proveriti `GET http://127.0.0.1:8081/api/health`, Flyway verziju 3 u PostgreSQL-u i da su PostgreSQL/Neo4j kontejneri healthy. Nijedan fajl nije commitovan niti pushovan.
+Check the health endpoint, Flyway history, and database container health separately. Do not interpret an old log or liveness response as proof that every current workflow passes.
 
+No commit or push was made during the recorded review.

@@ -1,24 +1,38 @@
-# Produkcioni deployment
+# Production deployment
 
-Repozitorijum sada sadrži produkcioni paket: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/Caddyfile` i `compose.production.yaml`.
+The repository includes backend/frontend Dockerfiles, a Caddy reverse proxy configuration, and `compose.production.yaml`. These files are deployment preparation, not evidence of an operational public installation.
 
-Na serveru sa domenom i otvorenim portovima 80/443:
+## Preparation
 
-```bash
+Provide a server with Docker Compose, a hostname pointing to it, and inbound ports 80 and 443. Configure private credentials and persistent storage. Build and verify the application before deployment, including the backend JAR required by the Docker build.
+
+From the repository root on the server:
+
+```sh
 cp .env.production.example .env.production
-# popuniti .env.production stvarnim, nasumičnim secrets vrednostima
+# Populate the file with environment-specific settings and independently generated secrets.
 docker compose --env-file .env.production -f compose.production.yaml up -d --build
 ```
 
-Frontend prosleđuje `/api` backendu kroz isti origin, pa kamera na telefonu dobija HTTPS kontekst kada domen dobije sertifikat. PostgreSQL, Neo4j i media storage koriste persistent Docker volume-e; baze nisu objavljene na javnim portovima.
+Do not overwrite an existing private configuration file. Review the Dockerfiles and Compose configuration for the selected host before running them.
 
-Pre prvog javnog puštanja potrebno je uraditi inicijalni import odobrenih seed podataka u produkcionu bazu, podesiti DNS domena ka serveru i napraviti prvi backup. Produkcioni profil namerno ne pokreće lokalne seedere, lokalni QR board ili Swagger.
+## Configuration
 
-Minimalna provera posle deploymenta:
+- Serve the frontend and `/api` through the same HTTPS origin. Use that public origin when generating exhibit QR boards.
+- Set a private `JWT_SECRET` with at least 32 UTF-8 bytes and supply it to the backend process.
+- Keep PostgreSQL and Neo4j credentials private, restrict database network exposure, and persist their data and uploaded media.
+- Configure DNS, TLS certificate storage/renewal, backups, and a tested restore procedure.
+- Import only approved content and accounts. The production profile does not run local seed data or enable local payment simulation and Swagger access.
+- Connect a real payment provider before accepting real card payments.
+- Configure SMTP if email delivery is required. Configure and provision the chosen TTS provider; selecting a provider variable alone does not install its executable, models, or credentials.
 
-```bash
+## Verification
+
+```sh
 docker compose --env-file .env.production -f compose.production.yaml ps
-curl https://your-domain.example/api/health
+curl --fail https://YOUR_DOMAIN/api/health
 ```
 
-Ne upisivati `.env.production` u Git i ne koristiti razvojni `JWT_SECRET` na javnom serveru.
+Replace `YOUR_DOMAIN` with the configured hostname. Health is a liveness endpoint, not a full dependency readiness check. Verify database connectivity, authentication, role restrictions, media delivery, payment behavior, backup recovery, and phone scanning separately.
+
+Do not commit `.env.production`, passwords, tokens, or private keys. See the [submission readiness report](submission-readiness.md) for the limits of the recorded local verification.

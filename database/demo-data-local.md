@@ -1,74 +1,59 @@
-# Demo podaci za lokalni profil
+# Local seed data
 
-`DemoDataSeeder` ubacuje podatke samo kada je aktivan Spring profil `local` ili
-`development`. Ne menja V1, V2 ili V3 migraciju, ne radi u `test`, staging ili
-production profilu i koristi BCrypt za demo lozinke. Ponovno pokretanje je
-bezbedno: prirodni ključevi demo zapisa i `ON CONFLICT DO NOTHING` sprečavaju
-duplikate.
+Local seed classes initialize demonstration content without changing Flyway V1–V3. `DemoDataSeeder` is restricted to local/development use; role-specific seed additions may require the `local` profile. Use the documented local startup rather than enabling seed data on a public server.
 
-## Demo nalozi
+Passwords are stored as BCrypt hashes. Natural keys and conflict handling make repeated startup idempotent. Restarting is not a database reset and must preserve existing history.
 
-Demo nalozi koriste lozinku `MuseumDemo!2026` (u bazi je samo BCrypt hash):
+## Accounts
 
-| Email | Uloge | Svrha |
-| --- | --- | --- |
-| `demo.visitor@museum.local` | `VISITOR` | prijava, kupovina, posete i preporuke |
-| `demo.staff@museum.local` | `CASHIER`, `GUIDE` | validacija ulaznice i događaji |
-| `demo.curator@museum.local` | `CURATOR` | katalog, autorstva, učešća i sadržaj; samo `local` |
-| `demo.guide@museum.local` | `GUIDE` | program i prijave; samo `local` |
+| Email | Role | Purpose |
+|---|---|---|
+| ana.petrovic@museum.local | VISITOR | Tickets, visits, content, and recommendations |
+| milica.jovanovic@museum.local | CASHIER | Counter sales and ticket validation |
+| nikola.markovic@museum.local | CURATOR | Collections, participation, content, and QR boards |
+| jelena.stojanovic@museum.local | GUIDE | Events and registrations |
+| ivan.nikolic@museum.local | MANAGER | Aggregate reports |
+| marija.ilic@museum.local | ADMINISTRATOR | Accounts, roles, and employees |
 
-Curator i Guide imaju odgovarajući Employee zapis i podtip. Postojeći staff
-nalog zadržava obe uloge; frontend daje prednost blagajni. Za Guide ekran
-koristiti zaseban `demo.guide` nalog. Nema demo Manager ili Administrator naloga.
-Guide seed dodaje predavanje, radionicu sa jednom prijavom demo posetioca i
-otkazanu turu. Ponovni start ne menja datume/status/prijave postojećih događaja;
-za demonstraciju nakon isteka datuma vodič može kreirati novi događaj.
+The local password is defined in `DemoDataSeeder.PASSWORD`. Email is the login identifier. These local addresses are not intended for external email delivery. Use the account for the role being demonstrated instead of relying on historical combined-role accounts.
 
-Email je identifikator za prijavu. Podaci koriste lokalne, lažne email adrese i
-telefone.
+## Content and identifiers
 
-## Stabilni demo identifikatori
+The richer local catalog includes museums, halls, exhibitions, exhibits, authors, prices, admission times, events, registrations, tickets, and visit history. See the [submission audit](../docs/submission-readiness.md#local-accounts-and-content) for recorded minimum coverage.
 
-Seed traži zapise po imenima i inventarskim brojevima, pa su identiteti stabilni
-nakon prvog pokretanja. Posle prvog pokretanja ID-jeve proverite ovim komandama:
+IDs depend on the existing database. Do not assume that a record has a particular numeric ID or reuse an old QR token. Read the current catalog or generate the current exhibition QR board.
 
-```powershell
-docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select id,naziv from muzej where naziv=\u0027Demo Museum Novi Sad\u0027; select id,naziv from izlozba where naziv=\u0027Tragovi svetlosti\u0027; select id,izlozba_id,pocetak from termin_izlozbe where izlozba_id=(select id from izlozba where naziv=\u0027Tragovi svetlosti\u0027); select izlozba_id,datum_vazenja_od,kategorija,cena from cenovnik_izlozbe where izlozba_id=(select id from izlozba where naziv=\u0027Tragovi svetlosti\u0027); select id,naziv,inventarski_broj from eksponat where inventarski_broj like \u0027DEMO-EX-%\u0027 order by id; select id_ucesca,qr_token from ucesce_eksponata_na_izlozbi where qr_token like \u0027DEMO-QR-%\u0027 order by id_ucesca;"' 
+The following read-only SQL can be run in an authenticated PostgreSQL client:
+
+```sql
+SELECT id, naziv FROM muzej ORDER BY id;
+SELECT id, naziv, datum_pocetka, datum_zavrsetka FROM izlozba ORDER BY id;
+SELECT id, izlozba_id, pocetak, kraj, kapacitet, status
+FROM termin_izlozbe ORDER BY pocetak;
+SELECT izlozba_id, datum_vazenja_od, kategorija, cena
+FROM cenovnik_izlozbe ORDER BY izlozba_id, datum_vazenja_od;
 ```
 
-Očekivani poslovni ključevi su muzej `Demo Museum Novi Sad`, izložba `Tragovi
-svetlosti`, kategorije `ODRASLI` i `STUDENT`, inventarski brojevi
-`DEMO-EX-001` do `DEMO-EX-003` i QR tokeni `DEMO-QR-001` do `DEMO-QR-003`.
+Do not publish QR tokens or credentials in logs or screenshots.
 
-## Aktiviranje
+## Startup
 
-```powershell
-docker compose up -d
-$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot'
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-$env:JWT_SECRET = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-cd backend
-.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
+Follow the [root setup guide](../README.md#running-on-windows) for Docker, Java, JWT, and TTS configuration. Start the backend with:
+
+```cmd
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Seed se izvršava pri startu aplikacije, posle Flyway migracija i Hibernate
-validacije. Za ponovno pokretanje samo zaustavite i ponovo pokrenite backend.
+Seeding runs after migrations and Hibernate validation. Restart the backend normally to rerun idempotent seed logic; do not delete Docker volumes. Existing event times and history are not a guarantee of current availability. Select a currently valid admission time or manage the schedule through the authorized workspace.
 
-## Redosled demonstracije
+## Demonstration sequence
 
-1. Otvorite `http://127.0.0.1:8081/swagger-ui/index.html` i proverite muzeje,
-   izložbe, termine i `/api/prices?exhibitionId=...`.
-2. Pozovite `POST /api/auth/login` sa demo posetiocem i sačuvajte `accessToken`.
-3. Sa tokenom pozovite `POST /api/tickets` sa `termId`, kategorijom `ODRASLI`,
-   `paymentMethod=KARTICA` i `demoDecline=false`.
-4. Demo osobljem se prijavite i pozovite `POST /api/cashier/validate` sa
-   dobijenim `qrToken` ulaznice i istim `termId`; to kreira aktivnu posetu.
-5. Posetiocem proverite `GET /api/visits/me`, zatim skenirajte
-   `POST /api/visits/{id}/scans` sa `DEMO-QR-001`.
-6. Pozovite `POST /api/visits/{id}/routes` sa kriterijumom `KOMBINACIJA`, pa
-   `GET /api/visits/{id}/recommendations` i `GET /api/recommendations/exhibitions`.
-7. Na kraju proverite `GET /api/visits/{id}/scans`, rutu i sadržaj eksponata.
+1. Browse museums, exhibitions, admission times, and prices through the UI or local Swagger.
+2. Sign in as the visitor and buy an available admission time using its actual ID and an available price category.
+3. As the cashier, validate the ticket QR token for the same `termId`; this creates the active visit.
+4. As the curator, generate the QR board for that exhibition from the same HTTPS origin used on the phone.
+5. As the visitor, open the active visit and scan a participation from that board. Confirm actual text, image, and audio delivery.
+6. Generate a route using a supported criterion such as `KOMBINACIJA`, inspect recommendations, and show scan history.
+7. Finish and rate the visit. Confirm that historical records remain available and further scanning is blocked.
 
-Kupovina i validacija koriste stvarne backend transakcije, kapacitet, payment
-status, QR i PostgreSQL ograničenja; demo payment adapter ne naplaćuje stvarni
-novac.
+The business flow uses actual backend transactions, capacity checks, ticket state transitions, and PostgreSQL constraints. The local payment adapter does not charge real money. Direct API token submission tests backend scanning only; follow the [phone camera procedure](../README.md#testing-qr-scanning-with-a-phone) to verify physical scanning.

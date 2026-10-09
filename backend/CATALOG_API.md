@@ -1,86 +1,82 @@
-# Katalog eksponata
+# Exhibit catalog API
 
-API koristi postojeće entitete i Flyway V1–V3, bez nove šeme. Odgovori su DTO-i.
-Ista pravila autorizacije važe sa `local` profilom i bez njega.
+The API uses the existing entities and Flyway V1–V3 schema. Responses are DTOs. The same authorization rules apply with and without the `local` profile.
 
-## Javne rute
+## Public routes
 
-Bez prijave (i za VISITOR):
+These routes are available without login and to visitors:
 
-| Metod | Putanja | Odgovor |
-| --- | --- | --- |
-| GET | `/api/exhibits` | Lista eksponata sa autorima |
-| GET | `/api/exhibits/{id}` | Eksponat sa autorima |
-| GET | `/api/authors` | Lista autora |
-| GET | `/api/authors/{id}` | Autor |
-| GET | `/api/exhibits/{id}/authorships` | Autori i vrsta doprinosa |
-| GET | `/api/exhibits/{id}/participations` | Učešća u javno vidljivim izložbama |
-| GET | `/api/exhibitions/{id}/participations` | Učešća na javno vidljivoj izložbi |
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/exhibits` | Exhibits with authors |
+| GET | `/api/exhibits/{id}` | Exhibit with authors |
+| GET | `/api/authors` | Authors |
+| GET | `/api/authors/{id}` | Author |
+| GET | `/api/exhibits/{id}/authorships` | Authors and contribution types |
+| GET | `/api/exhibits/{id}/participations` | Participations in publicly visible exhibitions |
+| GET | `/api/exhibitions/{id}/participations` | Participations in a publicly visible exhibition |
 
-Javni odgovor ne sadrži inventarski broj, napomenu autorstva, ID učešća,
-QR token, QR putanju, digitalnu putanju niti interne podatke rasporeda.
-ID eksponata, autora i izložbe su javni identifikatori za navigaciju.
-Izložba sa `onlineVisible=false` daje 404 na javnom pregledu učešća.
-Eksponat nema oznaku javne vidljivosti u postojećem modelu, pa su svi eksponati
-i autori dostupni u javnom katalogu; nisu dodavani novi atributi.
+Public responses exclude inventory numbers, internal authorship notes, participation IDs, QR tokens, QR paths, digital content paths, and internal placement details. Exhibit, author, and exhibition IDs remain public navigation identifiers.
 
-Primer `GET /api/exhibits/12` (ilustrativni podaci):
+An exhibition with `onlineVisible=false` returns 404 through the public participation view. Exhibits and authors have no separate visibility flag in the existing model.
+
+Illustrative `GET /api/exhibits/12` response:
 
 ```json
 {
   "id": 12,
-  "name": "Keramička posuda",
-  "creationPeriod": "19. vek",
-  "type": "Posuda",
-  "material": "Keramika",
-  "origin": "Srbija",
-  "description": "Opis predmeta.",
-  "authors": [{"id": 7, "name": "Ana Anić", "contributionType": "Autor"}]
+  "name": "Ceramic vessel",
+  "creationPeriod": "19th century",
+  "type": "Vessel",
+  "material": "Ceramic",
+  "origin": "Serbia",
+  "description": "A vessel used for storing household provisions.",
+  "authors": [{"id": 7, "name": "Ana Anic", "contributionType": "Author"}]
 }
 ```
 
-Primer `GET /api/exhibitions/3/participations`:
+Illustrative `GET /api/exhibitions/3/participations` response:
 
 ```json
 [
   {
-    "exhibition": {"id": 3, "name": "Svakodnevni život"},
-    "exhibit": {"id": 12, "name": "Keramička posuda"},
-    "contextDescription": "Uloga posude u svakodnevnom životu."
+    "exhibition": {"id": 3, "name": "Everyday Life"},
+    "exhibit": {"id": 12, "name": "Ceramic vessel"},
+    "contextDescription": "The vessel illustrates food storage in everyday domestic life."
   }
 ]
 ```
 
-Primer `GET /api/authors/7`:
+Illustrative `GET /api/authors/7` response:
 
 ```json
-{"id":7,"firstName":"Ana","lastName":"Anić","birthYear":1850,"deathYear":1920,"biography":"Biografija."}
+{"id":7,"firstName":"Ana","lastName":"Anic","birthYear":1850,"deathYear":1920,"biography":"Biographical information about the author."}
 ```
 
-## Upravljanje: CURATOR ili ADMINISTRATOR
+## Management: CURATOR or ADMINISTRATOR
 
-| Metod | Putanja | Namena |
-| --- | --- | --- |
-| POST | `/api/exhibits` | Kreiranje eksponata |
-| PUT, DELETE | `/api/exhibits/{id}` | Izmena / brisanje |
-| GET | `/api/exhibits/{id}/management` | DTO eksponata i inventarski broj |
-| POST | `/api/authors` | Kreiranje autora |
-| PUT, DELETE | `/api/authors/{id}` | Izmena / brisanje |
-| GET | `/api/exhibit-participations?exhibitionId={id}` | Učešća izložbe sa QR podacima, uključujući skrivene izložbe |
-| GET | `/api/exhibit-participations/{id}` | Upravljanje konkretnim učešćem |
-| POST | `/api/exhibit-participations` | Kreiranje učešća |
-| PUT, DELETE | `/api/exhibit-participations/{id}` | Izmena / brisanje |
-| GET | `/api/exhibit-participations/{id}/digital-content` | Lista sadržaja učešća |
-| GET | `/api/digital-content/{id}` | Sadržaj |
-| POST | `/api/digital-content` | Kreiranje reference sadržaja |
-| PUT, DELETE | `/api/digital-content/{id}` | Izmena / brisanje reference |
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/exhibits` | Create an exhibit |
+| PUT, DELETE | `/api/exhibits/{id}` | Update or delete |
+| GET | `/api/exhibits/{id}/management` | Exhibit DTO and inventory number |
+| POST | `/api/authors` | Create an author |
+| PUT, DELETE | `/api/authors/{id}` | Update or delete |
+| GET | `/api/exhibit-participations?exhibitionId={id}` | Exhibition participations with QR data, including hidden exhibitions |
+| GET | `/api/exhibit-participations/{id}` | Manage a participation |
+| POST | `/api/exhibit-participations` | Create a participation |
+| PUT, DELETE | `/api/exhibit-participations/{id}` | Update or delete |
+| GET | `/api/exhibit-participations/{id}/digital-content` | Participation content |
+| GET | `/api/digital-content/{id}` | Content record |
+| POST | `/api/digital-content` | Create a content reference |
+| PUT, DELETE | `/api/digital-content/{id}` | Update or delete a reference |
+| GET | `/api/exhibits/{id}/authorships/management` | Authorships including internal notes |
+| PUT | `/api/exhibits/{id}/authorships/{authorId}` | Create or update an authorship |
+| DELETE | `/api/exhibits/{id}/authorships/{authorId}` | Delete the relationship only |
 
-POST vraća 201 i Location; PUT vraća 200; DELETE vraća 204. Upravljanje
-eksponatom vraća `{ "exhibit": { ...javni DTO... }, "inventoryNumber": "INV-12" }`.
-Za novi ili izmenjeni eksponat `name` i `inventoryNumber` su obavezni.
-Autor zahteva `firstName`; godina smrti ne sme biti pre godine rođenja.
+POST returns 201 with Location; PUT returns 200; DELETE returns 204. Exhibit management returns an `exhibit` public DTO together with `inventoryNumber`. Exhibit creation and update require `name` and `inventoryNumber`. An author requires `firstName`; the death year cannot precede the birth year.
 
-Primer zahteva za učešće:
+Example participation request:
 
 ```json
 {
@@ -90,28 +86,19 @@ Primer zahteva za učešće:
   "removedAt": "2030-02-01T00:00:00Z",
   "position": "A1",
   "tourOrder": 1,
-  "contextDescription": "Priča ovog eksponata na izložbi."
+  "contextDescription": "The exhibit's role in this exhibition."
 }
 ```
 
-Ako je `qrToken` izostavljen pri kreiranju, servis generiše UUID token;
-izostavljanje pri izmeni čuva postojeći token. Kustos/admin može uneti token
-i `qrPath`. Token nema razmake, ima najviše 512 znakova i mora biti jedinstven.
-QR podaci postoje samo u upravljačkom odgovoru. Ne beležiti zahteve/odgovore
-sa ovih ruta u logove. DTO `toString()` rediguje reference i QR podatke;
-Hibernate SQL exception logger je isključen jer detalji ograničenja mogu
-uključiti token. API i dalje vraća generičku 409 grešku.
+The backend generates a unique UUID QR token on creation and preserves it on update. Clients cannot assign or overwrite `qrToken` or `qrPath` through the input DTO. QR data is available only in authorized responses. Do not log requests or responses containing QR data. DTO string representations redact references and QR values; Hibernate SQL exception logging is disabled to prevent constraint details from exposing tokens. The API returns a generic 409 conflict.
 
-Postojećem učešću se ne menjaju eksponat ili izložba: za drugu vezu kreira se
-novo učešće. Digitalni sadržaj se ne premešta na drugo učešće. Time se čuva
-identitet na koji se oslanjaju skeniranja i rute. Brisanje ne kaskadira:
-postojeće RESTRICT veze daju 409 kada postoje zavisni zapisi.
-Autorstvo ima složeni ključ `(authorId, exhibitId)` koji ostaje nepromenjen.
-Njegove write rute nisu deo ovog koraka; postojeće veze se čitaju kroz DTO.
+An existing participation cannot be moved to another exhibition or exhibit; create another participation for a different association. Digital content cannot be moved between participations. These restrictions preserve identities referenced by scans and routes. Deletion does not cascade: dependent records cause 409 through RESTRICT constraints.
 
-## Digitalni sadržaj: reference, bez uploada
+Authorship retains its composite key `(authorId, exhibitId)`. The PUT body contains `contributionType` and `note`; deleting the relationship does not delete either parent.
 
-Primer POST zahteva i odgovora:
+## Digital content
+
+Example reference request and response:
 
 ```json
 {"participationId":21,"type":"AUDIO","path":"media/audio.mp3","language":"sr","version":1,"automaticallyGenerated":false}
@@ -121,60 +108,26 @@ Primer POST zahteva i odgovora:
 {"id":8,"participationId":21,"type":"AUDIO","path":"media/audio.mp3","language":"sr","version":1,"automaticallyGenerated":false,"createdAt":"2030-01-01T10:00:00Z"}
 ```
 
-Dozvoljeni tipovi: `SLIKA`, `TEKST`, `AUDIO`. Verzija je pozitivna.
-Putanja je relativna referenca ili HTTP(S) URL; ne prihvataju se `file:`,
-`javascript:`, URL sa korisničkim podacima, protokol-relativni URL ili `..` segmenti.
-Servis ne preuzima URL, ne proverava da li fajl postoji i ne skladišti fajlove.
-`TEKST` označava referencu na tekstualni resurs, ne novi atribut za tekst.
+Supported API enum values are `SLIKA` (image), `TEKST` (text), and `AUDIO`. Versions must be positive. A reference may be relative or use HTTP(S). File URLs, JavaScript URLs, embedded URL credentials, protocol-relative URLs, and parent-directory segments are rejected.
 
-U postojećoj šemi nema oznake da je digitalna putanja bezbedna za javnost.
-Zato su novi content read endpointi samo za kustosa/admina. Posetilac koristi
-neizmenjenu `/api/visits/{id}/content/{participationId}` rutu sa proverom
-vlasništva i aktivne posete. Nema javnog zaobilaženja te provere.
+The generic reference endpoint does not prove that a remote resource exists. Dedicated text, image, and audio operations support stored content and TTS; see the [curator guide](../frontend/CURATOR.md). Saving text and generating audio are separate actions.
 
-## Postojeći katalog i greške
+Content management reads require CURATOR or ADMINISTRATOR. Visitors use `/api/visits/{id}/content/{participationId}`, which checks ownership and an active visit. There is no public bypass.
 
-GET liste i detalja muzeja, hala, izložbi i termina su javni u oba profila.
-Skrivene izložbe i njihovi termini se ne prikazuju anonimnim/visitor korisnicima;
-kustos/admin ih vidi. Write muzeja/hala ostaje ADMINISTRATOR; write
-izložbi/termina CURATOR ili ADMINISTRATOR.
+## Existing catalog and errors
 
-- 400: neispravan DTO, ID, enum, interval ili referenca.
-- 401: neprijavljen korisnik na zaštićenoj ruti.
-- 403: pogrešna uloga.
-- 404: nepostojeći resurs (ili skrivena izložba u javnom pregledu).
-- 409: duplikat, postojeće zavisnosti ili promena identiteta učešća/sadržaja.
+Museum, hall, exhibition, and admission-time browsing is public. Hidden exhibitions and their admission times are not exposed to anonymous users or visitors; authorized catalog staff can manage them. Museum and hall writes require ADMINISTRATOR. Exhibition and admission-time writes require CURATOR or ADMINISTRATOR.
 
-## Provera
+- 400: invalid DTO, ID, enum, interval, or reference.
+- 401: missing or invalid authentication on a protected route.
+- 403: insufficient role or ownership.
+- 404: missing resource, or a hidden exhibition in a public view.
+- 409: duplicate, dependent records, or an attempt to change participation/content identity.
 
-Sa Docker Desktop, JDK 21 i postavljenim testnim `JWT_SECRET` (najmanje 32 bajta),
-iz direktorijuma `backend` pokrenuti `mvn test` ili `mvnw.cmd test`.
-Testcontainers koristi izolovani PostgreSQL; razvojna baza se ne menja.
-Postojeće V1–V3 migracije kreiraju testnu šemu, a Hibernate `ddl-auto=validate`
-proverava mapiranja. Isti novi katalog testovi izvršavaju se sa `local` profilom
-i bez njega, uz stvarne potpisane JWT-ove i uloge iz testne baze.
+## Verification and implementation references
 
-## Izmenjeni fajlovi u ovom koraku
+With Docker Desktop, Java 21, and a process-level test `JWT_SECRET` configured, run `mvnw.cmd test` from `backend`. Testcontainers creates isolated PostgreSQL data; the development database is not reset. V1–V3 initialize the test schema and Hibernate validates the mappings. Catalog authorization tests cover local and non-local security using signed JWTs and database roles.
 
-Putanje u tabeli su relativne na direktorijum `backend`.
+Key implementation files under `backend/src` include `ExhibitCatalogController.java`, `ExhibitDtos.java`, `ExhibitCatalogService.java`, `AuthorshipRepository.java`, `ExhibitParticipationRepository.java`, and `DigitalContentRepository.java`. `ExhibitionService.java`, `TermService.java`, and `ApiSecurity.java` enforce visibility and access. `OpenApiConfiguration.java` documents authorization.
 
-| Fajl | Izmena |
-| --- | --- |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/controller/ExhibitCatalogController.java` | Nove javne i upravljačke REST rute |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/dto/ExhibitDtos.java` | Validirani zahtevi i odvojeni javni/upravljački DTO odgovori |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/service/ExhibitCatalogService.java` | CRUD, reference, javne projekcije i očuvanje veza |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/repository/AuthorshipRepository.java` | Upit za autore konkretnog eksponata |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/repository/ExhibitParticipationRepository.java` | Upiti po eksponatu/izložbi i zaključavanje učešća |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/repository/DigitalContentRepository.java` | Uređen sadržaj konkretnog učešća |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/service/ExhibitionService.java` | Javna vidljivost izložbi; osoblje vidi i skrivene |
-| `src/main/java/rs/ac/uns/ftn/museum/catalog/service/TermService.java` | Javna vidljivost termina prati vidljivost izložbe |
-| `src/main/java/rs/ac/uns/ftn/museum/people/security/ApiSecurity.java` | Javne GET rute i zaštita write/management ruta u oba profila |
-| `src/main/java/rs/ac/uns/ftn/museum/config/OpenApiConfiguration.java` | Swagger ne označava write rute kao javne |
-| `src/main/resources/application.yml` | Sprečavanje ispisa QR vrednosti kroz Hibernate SQL constraint detalje |
-| `src/test/java/rs/ac/uns/ftn/museum/catalog/ExhibitCatalogIntegrationTests.java` | CRUD, autorizacija, redakcija, 400/404/409, skriveni resursi, V1–V3 |
-| `src/test/java/rs/ac/uns/ftn/museum/catalog/LocalExhibitCatalogIntegrationTests.java` | Isti ugovor testiran u local profilu |
-| `src/test/java/rs/ac/uns/ftn/museum/support/CatalogAuthTestBase.java` | Testni nalozi sa stvarnim JWT-om i baznim ulogama |
-| `src/test/java/rs/ac/uns/ftn/museum/catalog/CatalogIntegrationTests.java` | Postojeći write testovi sada koriste administratorski nalog |
-| `src/test/java/rs/ac/uns/ftn/museum/OpenApiIntegrationTests.java` | Provera dokumentovane autorizacije |
-| `README.md` | Ažurirana pravila pristupa i opis V1–V3 |
-| `CATALOG_API.md` | Ugovor API-ja, primeri, ograničenja i spisak izmena |
+Relevant tests include `ExhibitCatalogIntegrationTests`, `LocalExhibitCatalogIntegrationTests`, `CatalogIntegrationTests`, and `OpenApiIntegrationTests`, with shared authentication support in `CatalogAuthTestBase`.

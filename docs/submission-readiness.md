@@ -2,57 +2,94 @@
 
 ## Conclusion
 
-**Spremno uz navedene provere.** Kod, testovi i lokalni demonstracioni tokovi su provereni. Za javnu produkciju i fizičku demonstraciju telefonom ostaju operativni koraci: stvarni HTTPS domen/reverse proxy, produkcioni payment provider, SMTP/TTS konfiguracija i test na stvarnom telefonu. Ti koraci nisu lažno označeni kao završeni.
+**Ready subject to the checks listed below.** The recorded audit verified code, tests, and local demonstration flows. Physical phone scanning and public production deployment require additional operational checks. They are not recorded as completed.
 
-## Izvršene provere
+This report describes the 2026-10-09 audit. Translating the documentation does not constitute a new application test run.
 
-- `backend\mvnw.cmd clean test package` — **PASS**, 182 testa, 0 neuspeha, 0 grešaka; Maven package i repackaged JAR **SUCCESS**. Testcontainers koristi zaseban PostgreSQL, a graf test zaseban Neo4j; razvojni Docker volume-i nisu brisani/resetovani.
-- `frontend\npm test` — **PASS**, 19 test fajlova / 164 testa.
-- `frontend\npx --no-install tsc --noEmit -p tsconfig.app.json` — **PASS**.
-- `frontend\npm run build` — **PASS**, izlaz `frontend/dist/museum`; postoji samo Angular upozorenje da `qrcode` nije ESM.
-- `git diff --check` — **PASS**; prijavljena su samo standardna upozorenja o CRLF konverziji.
+## Recorded checks
 
-Izolovani HTTP smoke test (`tmp/submission-smoke.ps1`) je prošao: registracija i prijava; kupovina; zabrana tuđeg pristupa; Cashier validacija i zabrana druge validacije; aktivna poseta; QR sken; SR tekst; eSpeak WAV; slika; preporuke; ruta; Manager; Guide događaj/prijava; Administrator nalozi; završetak i ocena; zabrana skena posle završetka. Neo4j je zatim zaustavljen u istoj izolovanoj proveri i fallback na kustoski redosled je vraćen za manje od 10 sekundi. Lokalni browser je pokazao SR/EN homepage/katalog/detalj izložbe i dostupne termine.
+| Command and working directory | Recorded result |
+|---|---|
+| `mvnw.cmd clean test package` in `backend` | PASS: 182 tests, 0 failures, 0 errors; package and repackaged JAR succeeded |
+| `npm test` in `frontend` | PASS: 19 files, 165 tests in the final saved execution log |
+| `npx --no-install tsc --noEmit -p tsconfig.app.json` in `frontend` | PASS |
+| `npm run build` in `frontend` | PASS; output under `frontend/dist/museum`; existing `qrcode` non-ESM warning |
+| `git diff --check` at the repository root | PASS; only standard CRLF conversion warnings recorded |
 
-Fizička kamera telefona, dozvola kamere, javni HTTPS origin i fizičko štampanje nisu proverljivi iz ovog okruženja. Za njih treba otvoriti aplikaciju preko stvarnog pouzdanog HTTPS domena sa telefona i odštampati QR tablu; `localhost` i običan HTTP sa LAN IP adresom nisu dovoljan uslov za mobilnu kameru.
+The earlier report stated 164 frontend tests; the final local log, `tmp/submission-frontend-final.log`, records 165. This correction is based on the saved log, not a new execution.
 
-Za praktičnu demonstraciju koristi se Cloudflare quick tunnel: `cloudflared tunnel --url http://localhost:4200`. QR tabla se generiše tek nakon što se kustos prijavi preko iste `https://....trycloudflare.com` adrese koju će koristiti telefon, sa izabranom izložbom koja odgovara aktivnoj poseti i validiranoj ulaznici. QR kod sa prethodne localhost adrese ili sa druge tunnel adrese biće namerno odbijen. Posetilac zatim na telefonu otvara istu HTTPS adresu, ulazi u aktivnu posetu, dozvoljava kameru i skenira novu tablu. Posle svakog novog pokretanja quick tunnel-a tabla se generiše ponovo.
+Testcontainers used isolated PostgreSQL and Neo4j instances. Existing development volumes were not deleted or reset.
 
-## Popravke urađene u ovoj proveri
+The isolated HTTP smoke run recorded in the local `tmp/submission-smoke.ps1` workflow covered registration/login, purchase, rejection of access to another visitor's records, cashier validation and rejection of repeated validation, an active visit, QR scanning, Serbian text, eSpeak WAV audio, an image, recommendations, routes, Manager access, Guide events/registrations, Administrator accounts, visit completion/rating, and rejection of scanning after completion. Stopping Neo4j in the isolated environment returned the curator-order fallback in under 10 seconds.
 
-- Test istorijske ulaznice je usklađen sa pravilom baze da je snapshot kupljene ulaznice nepromenljiv; istorijski zapis se sada kreira sa istorijskim vremenima.
-- Idempotency test vodiča proverava tri seed događaja po njihovim nazivima i proverava stabilnost celog rezultata, bez lažnog očekivanja starog ukupnog broja.
-- Katalog kartica sada ima vidljiv lokalizovan link `Detalji`/`Details`.
-- Test QR table proverava stvarno generisanu QR sliku, bez nestabilnog mock-a CommonJS biblioteke.
-- Poruka server greške sa statusom se ponovo prevodi kada korisnik promeni jezik.
-- README fajlovi su usklađeni sa stvarnim modulima i pokretanjem; ne sadrže stvarne tajne ili lozinke.
+The browser review covered the Serbian/English homepage, catalog, exhibition details, and available admission times. This is narrower than a complete browser-driven check of every role workflow. The local temporary files are audit artifacts, not a portable test harness guaranteed to exist in every checkout.
 
-## Stanje domena i seed-a
+## Manual phone and print checks
 
-Lokalni seed sadrži šest naloga: `ana.petrovic@museum.local` VISITOR, `milica.jovanovic@museum.local` CASHIER, `nikola.markovic@museum.local` CURATOR, `jelena.stojanovic@museum.local` GUIDE, `ivan.nikolic@museum.local` MANAGER i `marija.ilic@museum.local` ADMINISTRATOR. Lokalna odbrambena lozinka je definisana u `DemoDataSeeder.PASSWORD` i namerno nije prepisana u dokumentaciju.
+The audit did not verify a physical phone camera, its permission prompt, or physical printing. Use a trusted HTTPS address on the phone. A computer's localhost URL or ordinary LAN HTTP address is insufficient for mobile camera access.
 
-Seed katalog obuhvata najmanje 3 muzeja, 9 sala, 8 izložbi, 50 eksponata, više autora, buduće i istorijske termine, događaje/ture, cenovnike, prijave, ulaznice, posete i preporuke. Tačan broj nakon pokretanja uvek zavisi od postojeće lokalne baze i idempotentnog seed-a; clean testovi potvrđuju veze i ponovljivost bez brisanja istorije. Lokalni image seed ima 5 open-access asseta i njihove attribution podatke izlaže API; slike su označene kao tematske reference kada nisu fotografija konkretnog izmišljenog eksponata.
+For a temporary demonstration, run:
 
-Izvori slika su The Metropolitan Museum of Art Open Access (CC0 1.0), sačuvan source URL, autorom i attribution metapodacima; detalji su dostupni kroz `/api/media/...?...attribution=true`.
+```cmd
+cloudflared tunnel --url http://localhost:4200
+```
 
-## Specifikacija i EER
+Use the same current HTTPS address for the curator on the computer and visitor on the phone. Generate the QR board after selecting the exhibition matching the validated ticket and active visit. A board from localhost or an earlier tunnel address can fail the same-origin check. Regenerate it after a hostname change and update Angular's exact allowed hostname if required.
 
-Flyway V1–V3 i JPA implementacija čuvaju kardinalitete kroz FK, unique/composite ključeve i deferred constraint trigere: termin pripada jednoj izložbi, učešće eksponata jednoj izložbi i jednom eksponatu, digitalni sadržaj jednom učešću, ulaznica jednom terminu, poseta najviše jednom ulaznicom, a sken jednoj poseti i učešću. EER slika prvog podsistema grafički prikazuje učešće uz `(0,N)` na strani izložbe, dok implementacija namerno ima `ucesce.izlozba_id NOT NULL` — jedna postavka može imati više učešća, ali svako učešće pripada tačno jednoj izložbi. To je razlika dijagrama i implementacije, nije automatski menjana migracija.
+The full [QR procedure](../README.md#testing-qr-scanning-with-a-phone) includes ticket validation, camera permission, content checks, and tunnel troubleshooting. Repeated exhibit scans are recorded; repeated ticket validation is rejected.
 
-Neo4j projekcija trenutno koristi čvorove `Eksponat`, `Izlozba`, `Autor` i veze `IZLOZEN_NA`, `AUTOR_JE`, `CESTO_SLEDI`. Šira specifikacija navodi dodatne čvorove teme/perioda/civilizacije/istorijskih ličnosti i događaja; implementacija period i tip čuva kao svojstva eksponata, a ne kao posebne čvorove. Projekcija je periodično osvežavanje iz PostgreSQL-a, ne outbox po svakoj transakciji. Kriterijum `BLIZINA` koristi razliku u `redosled_obilaska`; nema stvarnih prostornih koordinata niti metrike udaljenosti.
+## Fixes recorded during the audit
 
-## Redosled demonstracije
+- The historical-ticket test now creates records with historical timestamps instead of modifying an immutable purchase snapshot.
+- The guide seed idempotency test identifies its three events by name and checks result stability rather than relying on an obsolete total count.
+- Catalog cards expose a visible localized details link.
+- The QR board test checks the actual generated QR image instead of relying on an unstable CommonJS library mock.
+- Server error messages with status information are translated again when the language changes.
+- README instructions were aligned with the implemented modules and configuration, without publishing real secrets.
 
-1. Otvoriti katalog i promeniti SR/EN; pokazati prošlu izložbu van javnog browse-a i budući termin.
-2. Registrovati/prijaviti posetioca, kupiti termin i pokazati ulaznicu sa izložbom.
-3. Prijaviti blagajnika, validirati QR ulaznicu, pokušati ponovnu validaciju i pokazati odbijanje.
-4. Kao posetilac otvoriti aktivnu posetu, skenirati QR sa table, pokazati tekst, sliku, audio i preporuke; isključiti Neo4j samo u lokalnoj demonstraciji da se pokaže fallback.
-5. Završiti posetu, oceniti je i pokazati istoriju.
-6. Redom pokazati Curator sadržaj/QR tablu, Cashier prodaju/validaciju, Guide događaje/prijave, Manager analitiku i Administrator naloge/uloge.
-7. Zaštitu potvrditi pokušajem pristupa tuđoj poseti/ulaznici i nedozvoljenoj radnji sa VISITOR nalogom.
+## Local accounts and content
 
-## Preostale prepreke
+| Email | Role |
+|---|---|
+| ana.petrovic@museum.local | VISITOR |
+| milica.jovanovic@museum.local | CASHIER |
+| nikola.markovic@museum.local | CURATOR |
+| jelena.stojanovic@museum.local | GUIDE |
+| ivan.nikolic@museum.local | MANAGER |
+| marija.ilic@museum.local | ADMINISTRATOR |
 
-Nema potvrđenog javnog hostinga, domena, TLS sertifikata, realnog payment gateway naloga, produkcionog SMTP-a ili spoljnog TTS naloga. Lokalni `DemoPaymentGateway` je namerno dostupan samo u `local`/`test`; u produkcionom profilu vraća konfiguracionu grešku dok se ne poveže stvarni provider. `health` je liveness endpoint, ne puna readiness provera. Kamera telefona i štampa ostaju ručne provere. Postojeći deployment fajlovi su priprema, ne dokaz da je javna infrastruktura već postavljena.
+The local password is defined in `DemoDataSeeder.PASSWORD` and is not reproduced here.
 
-Nema novih commitova ni push-a.
+The seeded catalog includes at least 3 museums, 9 halls, 8 exhibitions, 50 exhibits, multiple authors, future and historical admission times, events/tours, prices, registrations, tickets, visits, and recommendation data. Actual database totals depend on existing records and idempotent seeding; these are not destructive reset instructions.
+
+The recorded local image seed contains 5 open-access assets with attribution metadata. The source is The Metropolitan Museum of Art Open Access under CC0 1.0. Source URL, author, and attribution are exposed through the media API's attribution query, `/api/media/...?...attribution=true`. Thematic reference images are identified as such rather than presented as photographs of fictional collection objects.
+
+## Specification and EER comparison
+
+Flyway V1–V3 and JPA enforce cardinalities through foreign keys, unique/composite keys, and deferred constraint triggers. An admission time belongs to one exhibition; a participation belongs to one exhibition and one exhibit; content belongs to one participation; a ticket belongs to one admission time; a visit belongs to exactly one ticket, while a ticket has at most one visit; a scan belongs to one visit and one participation.
+
+The subsystem 1 diagram's exhibition–participation notation differs from the implemented required FK `ucesce_eksponata_na_izlozbi.izlozba_id`. An exhibition may have multiple participations, but each participation belongs to exactly one exhibition. The audit reported the discrepancy without automatically modifying the diagram or migration.
+
+The Neo4j projection uses `Eksponat`, `Izlozba`, and `Autor` nodes with `IZLOZEN_NA`, `AUTOR_JE`, and `CESTO_SLEDI` relationships. The broader specification describes additional theme, period, civilization, historical-person, and event nodes. The implementation instead stores period/type as exhibit properties. Projection refresh is periodic rather than driven by a transactional outbox.
+
+The `BLIZINA` criterion uses differences in `redosled_obilaska` (tour order). There are no actual spatial coordinates or measured physical distances.
+
+## Defense demonstration sequence
+
+1. Open the catalog and switch Serbian/English. Show current/future availability and explain why past exhibitions are excluded from public browsing.
+2. Register or sign in as a visitor, buy an available admission time, and show the ticket with its exhibition.
+3. Sign in as the cashier, validate the ticket, and demonstrate rejection of a second validation.
+4. As the visitor, open the active visit, scan an exhibit QR board, and show text, image, prepared audio, and recommendations. Stop Neo4j only in a controlled local demonstration to show fallback.
+5. Finish and rate the visit, then show history.
+6. Demonstrate Curator content/QR tools, Cashier sales/validation, Guide events/registrations, Manager analytics, and Administrator accounts/roles.
+7. Demonstrate rejection of another visitor's ticket/visit access and an operation not permitted to VISITOR.
+
+## Outstanding limits
+
+Public hosting, domain/TLS setup, a real payment gateway, production SMTP delivery, and external TTS service credentials were not established by this audit. Local eSpeak can generate audio without an external TTS account when its executable is installed and configured.
+
+`DemoPaymentGateway` simulates payments only in local/test profiles. Production payment attempts remain unavailable until a real provider is connected. The health endpoint is a liveness check, not full readiness. Deployment files are preparation rather than proof of deployed infrastructure.
+
+Phone camera and physical print checks remain manual. Run the commands in the table above to verify a newer checkout, with Docker available for Testcontainers. No unexecuted check should be reported as passing.
+
+No commit or push was performed as part of the recorded audit.

@@ -1,112 +1,83 @@
-# Kustoski modul
+# Curator workspace
 
-Implementacija koristi postojeće entitete i tabele. Nema promena EER-a, PostgreSQL šeme ili Flyway V1–V3. Nije rađen commit/push.
+The curator workspace uses the existing entities and Flyway V1–V3 schema. The source EER models are unchanged.
 
-## Frontend
+## Navigation and API
 
-Sve /curator rute imaju curatorGuard i canActivateChild, proveravaju nalog preko /api/accounts/me i podržavaju obnovu sesije. Neprijavljeni korisnik ide na prijavu, a zabranjena uloga na /forbidden sa porukom 403. To je frontend stranica, dok stvarni API za nedozvoljene uloge vraća HTTP 403.
+All `/curator` routes use `curatorGuard` and child-route protection. Session restoration checks `/api/accounts/me`. Unauthenticated users are redirected to login; disallowed roles reach `/forbidden`. The backend independently returns 401 or 403 for unauthorized API requests.
 
-| Ruta | Funkcija i API |
-| --- | --- |
-| /curator | Broj eksponata, autora i svih učešća, uz dodatni broj aktivnih učešća: GET /api/exhibits, /api/authors, /api/exhibit-participations, /api/exhibitions |
-| /curator/exhibits | Lista, pretraga, DELETE /api/exhibits/{id} uz potvrdu |
-| /curator/exhibits/new | POST /api/exhibits |
-| /curator/exhibits/:id/edit | GET /api/exhibits/{id}/management, PUT /api/exhibits/{id}; upravljanje autorstvom |
-| /curator/authors | GET /api/authors, DELETE /api/authors/{id} uz potvrdu |
-| /curator/authors/new | POST /api/authors |
-| /curator/authors/:id/edit | GET i PUT /api/authors/{id} |
-| /curator/participations | GET /api/exhibit-participations, eksponati i izložbe za nazive; DELETE /api/exhibit-participations/{id} uz potvrdu |
-| /curator/participations/new | POST /api/exhibit-participations; izbor iz postojeće liste eksponata i izložbi |
-| /curator/participations/:id/edit | GET i PUT /api/exhibit-participations/{id}; QR slika i kopiranje tokena |
-| /curator/digital-content | Lista po učešću: GET /api/exhibit-participations/{id}/digital-content; DELETE /api/digital-content/{id} uz potvrdu |
-| /curator/digital-content/new | Izbor učešća i POST /api/digital-content; posle uspeha otvara edit rutu |
-| /curator/digital-content/:id/edit | Direktni GET i PUT /api/digital-content/{id}; učešće je zaključano |
-| /curator/profile | Podaci sopstvenog naloga iz /api/accounts/me |
+| Route | Function and API |
+|---|---|
+| `/curator` | Exhibit, author, participation, and active participation counts |
+| `/curator/exhibits` | Search/list; confirmed DELETE `/api/exhibits/{id}` |
+| `/curator/exhibits/new` | POST `/api/exhibits` |
+| `/curator/exhibits/:id/edit` | Management GET and PUT; authorship management |
+| `/curator/authors` | Author list and confirmed deletion |
+| `/curator/authors/new` | POST `/api/authors` |
+| `/curator/authors/:id/edit` | GET and PUT `/api/authors/{id}` |
+| `/curator/participations` | Participation list with exhibit/exhibition names; confirmed deletion |
+| `/curator/participations/new` | Associate an existing exhibit and exhibition |
+| `/curator/participations/:id/edit` | Edit placement/context; display QR image and copy token |
+| `/curator/digital-content` | Content by participation; confirmed deletion |
+| `/curator/digital-content/new` | Select participation and create content |
+| `/curator/digital-content/:id/edit` | Read/update content; participation identity is fixed |
+| `/curator/profile` | Own account from `/api/accounts/me` |
 
-Kustos vidi Pregled, Eksponati, Autori, Postavke, Digitalni sadržaj, Profil i Odjava. Nakon prijave ide na /curator. Visitor i cashier tokovi zadržavaju svoje rute i menije. Kod naloga sa više uloga postojeća CASHIER prednost ostaje sačuvana.
+The workspace also provides exhibition/admission-time, pricing, and QR board operations. Visitor and cashier workflows retain their own navigation.
 
-## Minimalne backend dopune
+### Authorship
 
-| Ruta | Dozvola | Semantika |
-| --- | --- | --- |
-| GET /api/exhibit-participations | CURATOR, ADMINISTRATOR | Postojeći opcioni exhibitionId i dalje filtrira; bez parametra vraća sva učešća |
-| GET /api/exhibits/{id}/authorships/management | CURATOR, ADMINISTRATOR | Veze sa authorId, exhibitId, contributionType, note |
-| PUT /api/exhibits/{id}/authorships/{authorId} | CURATOR, ADMINISTRATOR | Idempotentno kreira ili menja vezu, telo sadrži contributionType i note |
-| DELETE /api/exhibits/{id}/authorships/{authorId} | CURATOR, ADMINISTRATOR | Briše samo vezu; nedostajuća veza daje 404 |
+| Endpoint | Behavior |
+|---|---|
+| GET `/api/exhibits/{id}/authorships/management` | Return author/exhibit IDs, contribution type, and internal note |
+| PUT `/api/exhibits/{id}/authorships/{authorId}` | Idempotently create/update the relationship |
+| DELETE `/api/exhibits/{id}/authorships/{authorId}` | Delete only the relationship; return 404 if absent |
 
-Autorstvo ostaje određeno postojećim složenim ključem (authorId, exhibitId). Nema veštačkog ID-a. Postojeća zajednička security konfiguracija štiti nove putanje u oba profila; nije dodat izuzetak za local.
+These operations require CURATOR or ADMINISTRATOR. Authorship uses the existing composite key; no artificial ID is introduced. The participation list accepts an optional `exhibitionId`; omitting it returns all authorized management records.
 
-## Dozvole
+## Permissions
 
-| Uloga | Javni katalog API | Upravljački API | Kustoski frontend |
-| --- | --- | --- | --- |
-| Neprijavljen | GET dozvoljen | 401 | Prijava |
-| VISITOR | GET dozvoljen | 403 | Zabranjen |
-| CASHIER | GET ostaje javni | 403 | Zabranjen; sopstveni blagajnički meni |
-| GUIDE | GET ostaje javni | 403 | Zabranjen |
-| CURATOR | GET dozvoljen | Dozvoljen CRUD | Dozvoljen |
-| ADMINISTRATOR | GET dozvoljen | Dozvoljen prema postojećim pravilima | Dozvoljen |
+| Role | Public catalog | Management API | Curator frontend |
+|---|---|---|---|
+| Anonymous | GET allowed | 401 | Login |
+| VISITOR | GET allowed | 403 | Forbidden |
+| CASHIER | GET allowed | 403 | Forbidden; cashier workspace available |
+| GUIDE | GET allowed | 403 | Forbidden |
+| CURATOR | GET allowed | CRUD allowed | Allowed |
+| ADMINISTRATOR | GET allowed | Allowed by catalog rules | Allowed |
 
-Javni DTO-i ostaju bez QR tokena, QR putanje, inventarskog broja i interne napomene autorstva. Visitor dobija sadržaj kroz postojeću aktivnu posetu, bez administrativnih kontrola.
+Public DTOs exclude QR tokens/paths, inventory numbers, and internal authorship notes. Visitors access contextual content through an active visit, without management controls. The local profile does not bypass these restrictions.
 
-## QR i digitalni sadržaj
+## QR and digital content
 
-Frontend ne šalje qrToken ni qrPath. Backend generiše UUID pri kreiranju i čuva isti token pri izmeni; baza garantuje jedinstvenost. QR polja su uklonjena iz ulaznog DTO-a i servis ih ne čita iz klijentskog zahteva. Dodatni JSON ključevi se ignorišu: ne mogu prepisati ID, QR identitet ili datum kreiranja sadržaja. Postojeća QR putanja ostaje sačuvana pri izmeni. QR sliku lokalno generiše već instalirani qrcode, bez spoljnog servisa. Kopiranje ima poruku uspeha i rezervno ručno kopiranje.
+The frontend does not submit `qrToken` or `qrPath`. The backend creates a unique UUID token and preserves it during edits. Extra JSON fields cannot overwrite the record ID, QR identity, or content creation time. Existing QR paths are preserved. The `qrcode` library renders QR images locally without an external image service.
 
-Izložba i eksponat postojećeg učešća se ne menjaju; novo povezivanje zahteva novo učešće. Digitalni sadržaj se ne premešta na drugo učešće. Brisanje povezanih zapisa može vratiti 409; nema kaskadnog brisanja istorije.
+A participation's exhibition and exhibit are immutable. Content cannot move to another participation. Dependent records may prevent deletion with 409; historical data is not cascade-deleted.
 
-TEKST, SLIKA i AUDIO čuvaju putanju/referencu, jezik, pozitivnu celobrojnu verziju i oznaku automatskog generisanja. TEKST nema posebno polje za tekst: koristi se referenca na postojeći tekstualni resurs. Frontend i backend proveravaju oblik reference; nema upload-a, provere dostupnosti udaljenog servera niti preuzimanja resursa na backendu. Postojeći visitor prikaz referenci nije menjan. Model i šema ostaju isti.
+Content records store a reference, language, positive integer version, and automatic-generation flag. The enum values are `TEKST`, `SLIKA`, and `AUDIO`. The current application supports stored text, images, and generated audio in addition to generic references. Saving text does not automatically generate audio; use the explicit generation action with a configured TTS provider. A saved remote reference alone is not evidence that media playback works.
 
-## Demo nalog i ručna provera
+For phone scanning, generate the QR board from the same HTTPS origin used on the phone and select the exhibition matching the active visit. Regenerate it after a temporary tunnel hostname changes. Follow the complete [QR testing procedure](../README.md#testing-qr-scanning-with-a-phone).
 
-Local seed idempotentno dodaje demo.curator@museum.local, sa lozinkom navedenom u zahtevu korisnika i konstantom DemoDataSeeder.PASSWORD. Lozinka se ne ispisuje u dokumentaciju ili logove; u bazi je BCrypt hash. Novi nalog ima samo CURATOR ulogu i Curator podtip. Ova dopuna se izvršava isključivo kada je aktivan profil local, ne samo development i ne u produkciji.
+## Local account and manual checks
 
-1. Pokrenuti novu backend verziju sa postojećom .env konfiguracijom i JWT_SECRET, profilom local. Pokrenuti npm start iz frontend; postojeći proxy očekuje port 8081.
-2. Na /login prijaviti demo.curator@museum.local lozinkom iz dostavljenog zahteva. Očekuje se /curator i samo kustoski meni. Osvežiti stranicu: prijava i meni ostaju.
-3. U Autorima kreirati test autora i izmeniti biografiju. U Eksponatima kreirati predmet sa jedinstvenim inventarskim brojem. Posle čuvanja otvara se edit ruta sa porukom uspeha.
-4. Na edit strani eksponata povezati autora, uneti doprinos i internu napomenu, izmeniti vezu, pa je ukloniti. Autor i eksponat moraju ostati. Ponovo povezati radi provere 409 pri brisanju autora.
-5. Kreirati učešće test eksponata na postojećoj izložbi. Uneti datume, poziciju, redosled i kontekst. Proveriti da ne postoji polje za ručni unos tokena. Nakon čuvanja proveriti QR sliku i Kopiraj; izmeniti kontekst i potvrditi da token ostaje isti.
-6. U Digitalnom sadržaju odabrati upravo to učešće, kliknuti „Dodaj digitalni sadržaj“ i na /curator/digital-content/new uneti TEKST referencu demo/grad-001.txt, jezik sr, verziju 1. Sačuvati: otvara se /curator/digital-content/{id}/edit. Izmeniti verziju i sačuvati; učešće ostaje zaključano. Link „Nazad na sadržaj“ vraća listu izabranog učešća. AUDIO i SLIKA testirati sopstvenim dostupnim resursima; ne unositi proizvoljan nepostojeći URL kao dokaz da reprodukcija radi.
-7. Probati brisanje učešća sa sadržajem: očekuje se razumljiva poruka konflikta. Ukloniti test sadržaj, zatim test učešće, autorstvo, eksponat i autora. Svako brisanje traži potvrdu. Ne brisati seed zapise ili istoriju poseta.
-8. Odjaviti se i otvoriti /curator/exhibits: očekuje se prijava. Sa VISITOR, CASHIER i GUIDE nalozima očekuje se zabrana pristupa. ADMINISTRATOR ima postojeća prava upravljanja.
-9. Anonimno i kao visitor proveriti javni katalog: QR/interna napomena nisu prisutni. Kupovina, validacija na blagajni, aktivna poseta, skeniranje i preporuke koriste postojeće tokove.
-10. Proveriti dashboard, liste i forme na 320, 375, 390 i 430 px, tabletu 768 px i desktopu. Forme prelaze u jednu kolonu, liste su kartice, navigacija koristi postojeći mobilni meni. Proveriti fokus tastaturom, duge nazive i dugačke reference.
+The local curator account is `nikola.markovic@museum.local`. Its password is defined in `DemoDataSeeder.PASSWORD`; the database stores a BCrypt hash. Local seed credentials must not be used for public deployment.
 
-## Provere i preostala ograničenja
+1. Start the application using the root guide, sign in as the curator, and refresh the page to verify session restoration.
+2. Create a disposable author and exhibit with a unique inventory number. Edit their descriptive fields.
+3. Add, update, and remove their authorship. Confirm that both parent records remain. Restore the relationship and verify that deleting a referenced author produces a conflict.
+4. Create an exhibition participation, set its placement, tour order, and context. Check the generated QR image; edit the context and confirm the token remains stable.
+5. Add digital content for that participation. Save text, upload an appropriate image, and explicitly generate audio. Test actual delivery and playback using a visitor's active visit.
+6. Check that content cannot be reassigned and that deleting a participation with dependencies produces a clear conflict. Clean up only disposable records in dependency order. Do not delete seed records or visit history.
+7. Log out and verify the login redirect. Check rejection with VISITOR, CASHIER, and GUIDE accounts and permitted catalog access with ADMINISTRATOR.
+8. Inspect public responses for absence of internal notes and QR fields. Exercise ticket purchase, cashier validation, scanning, and recommendations separately.
+9. Check keyboard focus, long names/references, and layouts at phone, tablet, and desktop widths, including 320, 375, 390, 430, and 768 pixels.
 
-- Ceo backend skup: 104 testa, 0 grešaka/neuspeha; izolovani PostgreSQL sa postojećim migracijama i Hibernate validacijom. Uključuje javne DTO-e, zabranu uloga, CRUD, složeni ključ, roditeljske 404, konflikte, QR generisanje i stabilnost, digitalni sadržaj i stare tokove.
-- Frontend: 45 testova u 4 fajla, svi prošli. Uključuju postojeće testove i nove provere guardova, navigacije, obnove sesije, duplog slanja, konflikta, brisanja, autorstva, referenci i direktnih ruta sadržaja. Završna TypeScript provera i production build prošli su 23.09.2026. Prošao je i git diff --check.
-- Angular build ima postojeće CommonJS upozorenje za qrcode. Prvi sandbox pokušaj nije mogao pročitati roditeljske direktorijume; odobren build van sandboxa je prošao.
-- Posle eksplicitnog odobrenja korisnika pokrenuti su local backend na 8082 (Flyway isključen, Hibernate validate) i privremeni frontend na 4201 sa proxyjem iz privremenog direktorijuma. Postojeći procesi na 8081/4200 nisu zaustavljani. Demo kustos je uspešno prijavljen; dashboard prikazuje 9 eksponata, 2 autora i 9 aktivnih učešća.
-- U browseru su potvrđeni meni, refresh sesije, liste i edit forme, autorstva, profil, izbor sadržaja, čuvanje postojeće reference sadržaja, QR slika/read-only token, odjava, anonimno preusmeravanje na prijavu i zabrana kustoskih ruta za visitor i cashier. Tokeni nisu ispisivani niti snimani u screenshotovima.
-- Vizuelno su pregledane mobilna forma eksponata, mobilni sadržaj i tablet forma učešća. Merene su stranice pregleda/listi/formi na 320, 390, 768 i 1440 px, a potpuno učitana forma učešća dodatno na 375 i 430 px: nema horizontalnog prelivanja, mobilna forma ima jednu kolonu. GUIDE i ADMINISTRATOR dozvole proverene su automatizovanim testovima.
-- Automatska approval provera odbila je probno čuvanje postojećeg eksponata i autorstva u razvojnoj bazi. Ti upisi nisu ponavljani; njihov CRUD, kao i kreiranje/brisanje drugih zapisa, provereni su u izolovanoj test bazi i frontend HTTP testovima. Potpun ručni CRUD krug nad razvojnim zapisima ostaje opcioni korak iz prethodnog odeljka.
-- Nema upload/storage infrastrukture, zbirnog broja digitalnog sadržaja ni detaljnog profila zaposlenog kroz API sopstvenog naloga. Dashboard prikazuje ukupan broj učešća i dodatno aktivna učešća po datumima postavljanja/uklanjanja i statusu/datumu izložbe, bez izmišljene analitike. API autora ne vraća listu povezanih eksponata; autorstvima se upravlja na edit strani izabranog eksponata, bez N+1 obilaska kataloga.
-- Liste su namenjene sadašnjoj veličini kataloga; server nema paginaciju. Osvežavanje Neo4j projekcije koristi postojeći mehanizam; ovaj modul ga ne menja.
+## Historical verification
 
-## Izmenjeni fajlovi
+The 2026-09-23 module review recorded 104 passing backend tests and 45 passing frontend tests in four files, together with successful TypeScript, production build, and whitespace checks. These are historical results, not a claim that this documentation edit reran the suite. The build reported the existing `qrcode` CommonJS warning.
 
-Backend:
-- backend/src/main/java/rs/ac/uns/ftn/museum/catalog/controller/ExhibitCatalogController.java
-- backend/src/main/java/rs/ac/uns/ftn/museum/catalog/dto/ExhibitDtos.java
-- backend/src/main/java/rs/ac/uns/ftn/museum/catalog/service/ExhibitCatalogService.java
-- backend/src/main/java/rs/ac/uns/ftn/museum/config/DemoDataSeeder.java
-- backend/src/test/java/rs/ac/uns/ftn/museum/catalog/ExhibitCatalogIntegrationTests.java
-- backend/src/test/java/rs/ac/uns/ftn/museum/journey/LocalDemoJourneyTests.java
+The review used an additional local backend on 8082 and frontend on 4201 without stopping existing 8081/4200 processes. Browser checks covered login, session refresh, navigation, forms, authorships, profile, content references, QR display, logout, and visitor/cashier route denial. Responsive measurements found no horizontal overflow at the recorded widths. GUIDE and ADMINISTRATOR permissions were covered by automated tests.
 
-Frontend:
-- frontend/src/app/app.ts
-- frontend/src/app/core/api.ts
-- frontend/src/app/core/auth.ts
-- frontend/src/app/core/curator.ts (nov)
-- frontend/src/app/pages/auth-page.ts
-- frontend/src/app/pages/curator-overview.ts (nov)
-- frontend/src/app/pages/curator-list.ts (nov)
-- frontend/src/app/pages/curator-editor.ts (nov)
-- frontend/src/app/pages/curator-authorships.ts (nov)
-- frontend/src/app/pages/curator-content.ts (nov)
-- frontend/src/app/pages/curator.spec.ts (nov)
-- frontend/src/app/shared/participation-qr.ts (nov)
-- frontend/src/app/routes.ts
-- frontend/src/styles.css
-- frontend/CURATOR.md (ovaj dokument)
+Some writes to existing development records were blocked by the execution environment's approval review; they were not retried. CRUD behavior was covered in isolated integration and frontend HTTP tests. The initial reference-only content limitation was superseded by the current media features.
+
+Lists target the current catalog size and do not provide server pagination. Author relationships are managed from the exhibit editor rather than loading every exhibit for an author. Neo4j refresh uses the shared projection mechanism. See the [integrated submission audit](../docs/submission-readiness.md) for later recorded results.

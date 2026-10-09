@@ -1,62 +1,62 @@
-# Relacioni model — podsistem 2
+# Relational model — subsystem 2
 
-Izvori: specifikacija §3, §8–10 i §12; EER drugog podsistema i konačni EER. V1 i odobreni dokumenti ostaju neizmenjeni.
+Sources: specification sections 3, 8–10, and 12; the subsystem 2 and combined EER diagrams. V1 and the approved source documents remain unchanged.
 
-## Mapiranje pre implementacije
+## Mapping
 
-ID: bigint identity. Datumi procesa: timestamptz/Instant; datum zaposlenja: date/LocalDate. Tekst: text; enum: varchar(32); logičke vrednosti: boolean. Sve PK kolone su NOT NULL.
+Standalone IDs use bigint identity. Process timestamps use timestamptz/Java Instant; employment dates use date/LocalDate. Text uses text, enums varchar(32), and flags boolean. All primary-key columns are NOT NULL. SQL identifiers retain their implemented names.
 
-| EER element / tabela | Kolone | PK | FK | UNIQUE | NULL pravila | CHECK | Kardinalitet | ON DELETE |
+| Entity / table | Columns | PK | FK | UNIQUE | Nullability | CHECK | Cardinality | ON DELETE |
 |---|---|---|---|---|---|---|---|---|
-| KorisničkiNalog / korisnicki_nalog | id, email, lozinka_hash, aktivan, datum_registracije, poslednja_prijava | id | — | email, lower(email) | poslednja_prijava opciona; ostalo obavezno | BCrypt format | nalog ima 1..N uloga; 0..1 posetioca i 0..1 zaposlenog | RESTRICT za zavisne profile/dodele |
-| Uloga / uloga | id, naziv, opis | id | — | naziv | opis opciono | šest odobrenih naziva | 0..N dodela | RESTRICT |
-| NalogUloga / nalog_uloga | nalog_id, uloga_id, datum_dodele, dodelio_id | (nalog_id, uloga_id) | nalog, uloga, opciono nalog dodelioca | PK | dodelio_id opciono | minimum jedna uloga po nalogu: odloženi trigger | M:N + opcioni dodelilac | RESTRICT; dodelilac SET NULL |
-| Posetilac / posetilac | id, nalog_id, ime, prezime, telefon, saglasnost_za_preporuke | id | nalog_id | nalog_id | telefon opciono; ostalo obavezno | — | profil tačno 1 nalog; nalog 0..1 profil | RESTRICT |
-| Zaposleni / zaposleni | id, nalog_id, muzej_id, ime, prezime, telefon, datum_zaposlenja, tip_zaposlenog, nadredjeni_id | id | nalog, muzej iz V1, zaposleni | nalog_id | telefon i nadredjeni_id opciono | pet podtipova; zabrana sopstvenog nadređenog | tačno 1 nalog/muzej/podtip; 0..1 nadređeni; 0..N podređenih | RESTRICT |
-| Kustos / kustos | zaposleni_id, specijalizacija | zaposleni_id | zaposleni | PK | specijalizacija opciona | IS-A trigger | tačno 1 nadtip | RESTRICT |
-| Vodič / vodic | zaposleni_id, primarni_jezik | zaposleni_id | zaposleni | PK | primarni_jezik opciono | IS-A trigger | tačno 1 nadtip; 0..N događaja | RESTRICT |
-| Blagajnik / blagajnik | zaposleni_id, oznaka_saltera | zaposleni_id | zaposleni | PK | oznaka_saltera opciono | IS-A trigger | tačno 1 nadtip | RESTRICT |
-| Menadžer / menadzer | zaposleni_id, nivo_izvestavanja | zaposleni_id | zaposleni | PK | nivo_izvestavanja opciono | IS-A trigger | tačno 1 nadtip | RESTRICT |
-| Administrator / administrator | zaposleni_id, nivo_administracije | zaposleni_id | zaposleni | PK | nivo_administracije opciono | IS-A trigger | tačno 1 nadtip | RESTRICT |
-| Interesovanje / interesovanje | id, naziv, opis | id | — | naziv | opis opciono | — | 0..N posetilaca | RESTRICT |
-| interesuje se za / posetilac_interesovanje | posetilac_id, interesovanje_id, nivo | (posetilac_id, interesovanje_id) | posetilac, interesovanje | PK | nivo opciono | nema izmišljenog opsega nivoa | M:N, 0..N sa obe strane | RESTRICT |
-| Događaj / dogadjaj | id, izlozba_id, vodic_id, naziv, tip, pocetak, kraj, kapacitet, jezik, status | id | izlozba iz V1, vodic | — | vodic_id i jezik opciono; ostalo obavezno | tip/status, ispravan interval, nenegativan kapacitet | tačno 1 izložba; 0..1 vodič; 0..N prijava | RESTRICT |
-| prijavljuje se na / prijava_na_dogadjaj | posetilac_id, dogadjaj_id, datum_prijave, status | (posetilac_id, dogadjaj_id) | posetilac, dogadjaj | PK | sve obavezno | PRIJAVLJEN/PRISUSTVOVAO/OTKAZAN | M:N | RESTRICT |
+| Account / korisnicki_nalog | id, email, lozinka_hash, aktivan, datum_registracije, poslednja_prijava | id | — | email, lower(email) | Last login optional; others required | BCrypt format | 1..N roles; 0..1 visitor and 0..1 employee | RESTRICT for dependent profiles/assignments |
+| Role / uloga | id, naziv, opis | id | — | naziv | Description optional | Six supported role names | 0..N assignments | RESTRICT |
+| Role assignment / nalog_uloga | nalog_id, uloga_id, datum_dodele, dodelio_id | (nalog_id, uloga_id) | Account, role, optional assigning account | PK | Assigning account optional | At least one role per account, deferred trigger | M:N plus optional assigner | RESTRICT; assigner SET NULL |
+| Visitor / posetilac | id, nalog_id, ime, prezime, telefon, saglasnost_za_preporuke | id | nalog_id | nalog_id | Phone optional; others required | — | Exactly 1 account; account has 0..1 visitor profile | RESTRICT |
+| Employee / zaposleni | id, nalog_id, muzej_id, ime, prezime, telefon, datum_zaposlenja, tip_zaposlenog, nadredjeni_id | id | Account, V1 museum, employee | nalog_id | Phone and supervisor optional | Five subtypes; no self-supervision | Exactly 1 account/museum/subtype; 0..1 supervisor; 0..N subordinates | RESTRICT |
+| Curator / kustos | zaposleni_id, specijalizacija | zaposleni_id | Employee | PK | Specialization optional | IS-A trigger | Exactly 1 supertype | RESTRICT |
+| Guide / vodic | zaposleni_id, primarni_jezik | zaposleni_id | Employee | PK | Primary language optional | IS-A trigger | Exactly 1 supertype; 0..N events | RESTRICT |
+| Cashier / blagajnik | zaposleni_id, oznaka_saltera | zaposleni_id | Employee | PK | Counter designation optional | IS-A trigger | Exactly 1 supertype | RESTRICT |
+| Manager / menadzer | zaposleni_id, nivo_izvestavanja | zaposleni_id | Employee | PK | Reporting level optional | IS-A trigger | Exactly 1 supertype | RESTRICT |
+| Administrator / administrator | zaposleni_id, nivo_administracije | zaposleni_id | Employee | PK | Administration level optional | IS-A trigger | Exactly 1 supertype | RESTRICT |
+| Interest / interesovanje | id, naziv, opis | id | — | naziv | Description optional | — | 0..N visitors | RESTRICT |
+| Visitor interest / posetilac_interesovanje | posetilac_id, interesovanje_id, nivo | (posetilac_id, interesovanje_id) | Visitor, interest | PK | Level optional | No arbitrary level range | M:N, 0..N on both sides | RESTRICT |
+| Event / dogadjaj | id, izlozba_id, vodic_id, naziv, tip, pocetak, kraj, kapacitet, jezik, status | id | V1 exhibition, guide | — | Guide and language optional; others required | Type/status, valid interval, nonnegative capacity | Exactly 1 exhibition; 0..1 guide; 0..N registrations | RESTRICT |
+| Event registration / prijava_na_dogadjaj | posetilac_id, dogadjaj_id, datum_prijave, status | (posetilac_id, dogadjaj_id) | Visitor, event | PK | All required | PRIJAVLJEN/PRISUSTVOVAO/OTKAZAN | M:N | RESTRICT |
 
-Svi FK imaju ON UPDATE RESTRICT. Indeksi pokrivaju FK i početak događaja. Ne uvodi se direktan FK događaj–muzej: veza je događaj → izložba → sala → muzej.
+All foreign keys use ON UPDATE RESTRICT. Indexes cover foreign keys and event start times. No direct event–museum FK is added: the relationship is event → exhibition → hall → museum.
 
-## IS-A i minimalne kardinalnosti
+## IS-A and minimum cardinalities
 
-JPA: apstraktni Employee, @Inheritance(JOINED), diskriminator tip_zaposlenog; pet konkretnih podtipova sa @PrimaryKeyJoinColumn. PostgreSQL odloženi constraint triggeri nad nadtipom i svih pet podtipova zaključavaju nadtip, broje podtipove i proveravaju da postoji tačno jedan i da odgovara diskriminatoru. Time ni direktan SQL ne može ostaviti nadtip bez podtipa ili sa dva podtipa nakon commit-a.
+JPA uses abstract `Employee`, `@Inheritance(JOINED)`, the `tip_zaposlenog` discriminator, and five concrete subtypes with `@PrimaryKeyJoinColumn`. Deferred PostgreSQL constraint triggers lock the supertype row, count subtype records, and require exactly one matching subtype. Direct SQL therefore cannot commit an employee with zero or multiple subtypes.
 
-Zaposleni se kreira kao konkretan podtip, u jednoj transakciji. PUT menja podatke postojećeg podtipa; promena podtipa nije implicitna (409). Poslovni podtip i RBAC uloga su nezavisni; zaposlenje ne daje automatski privilegije.
+Employees are created as concrete subtypes in one transaction. PUT updates the existing subtype; changing subtype implicitly returns 409. Employment type and RBAC role are independent: employment does not automatically grant permissions.
 
-NalogUloga koristi @EmbeddedId/@MapsId. Odloženi trigger čuva minimum 1..N i pri direktnom SQL-u; servis ne dozvoljava uklanjanje poslednje uloge. Datum dodele se popunjava automatski, dodelilac je autentifikovani administrator, a za registraciju NULL.
+Role assignments use `@EmbeddedId`/`@MapsId`. A deferred trigger enforces at least one role even for direct SQL, and the service rejects removal of the last role. Assignment time is automatic; the assigner is the authenticated administrator, or NULL for registration.
 
-Nalog može imati i profil posetioca i profil zaposlenog: dva nezavisna FK UNIQUE, bez neodobrenog međusobnog isključivanja. Nadređenost je opcioni self FK; servis sprečava cikluse i serijalizuje izmene hijerarhije. Ne zahteva se isti muzej nadređenog jer to nije navedeno.
+An account may have both visitor and employee profiles through two independent unique FKs. Supervision is an optional self-reference; the service prevents cycles and serializes hierarchy changes. A same-museum supervisor restriction is not added because the specification does not require it.
 
-## Tumačenja i granice
+## Interpretations and limits
 
-- Korisničko ime nije atribut u specifikaciji ni EER-u. Identitet za login je email (trim + lowercase); ne dodaje se username kolona. Jedinstvenost proveravaju servis i DB, uključujući razliku u velikim/malim slovima.
-- Opisna polja i podtipska obeležja bez eksplicitne obaveznosti ostaju opciona. Ime/prezime i osnovni operativni podaci su obavezni na API granici.
-- Statusi i tipovi događaja/prijava su zatvoreni skupovi iz specifikacije. Nema izmišljenog zahteva da svaki događaj ima vodiča ili da je događaj nužno unutar termina/perioda izložbe: takvo pravilo za događaj nije propisano. Proverava se ispravan interval početak < kraj.
-- Prijava je dozvoljena samo za PLANIRAN događaj sa preostalim kapacitetom. PRIJAVLJEN i PRISUSTVOVAO zauzimaju mesto. OTKAZAN zapis čuva istoriju i može se ponovo aktivirati; druga aktivna prijava istog posetioca daje 409.
-- Pri prijavi/odjavi i promeni kapaciteta zaključava se red događaja. Ne uvodi se dodatno vremensko pravilo prijave (npr. rok 24 h), jer nije u specifikaciji. ZAVRSEN/OTKAZAN/POPUNJEN događaj ne prihvata nove prijave. Kapacitet se ne može smanjiti ispod zauzetih mesta.
-- Nema fizičkog automatskog brisanja naloga sa profilima/istorijom; administrator može deaktivirati nalog. Fizički DELETE ostaje ograničen FK vezama i transakcijom.
+- Email, trimmed and lowercased, is the login identifier. No separate username column is introduced. Services and the database enforce case-insensitive uniqueness.
+- Descriptive fields and subtype attributes without explicit mandatory requirements remain optional. Names and core operational fields are required at the API boundary.
+- Event and registration types/statuses are closed sets. A guide is optional; no additional requirement places every event inside an exhibition admission interval. Start must precede end.
+- Registration requires a planned event with remaining capacity. Registered and attended records occupy places. Cancelled records preserve history and may be reactivated; a duplicate active registration returns 409.
+- Registration, cancellation, and capacity changes lock the event row. Finished, cancelled, and full events reject new registrations. Capacity cannot be reduced below occupied places. No arbitrary 24-hour deadline is introduced.
+- Accounts with dependent profiles/history are not automatically deleted. Administrators can deactivate accounts; physical deletion remains subject to FK and transaction constraints.
 
-## Bezbednost i automatizacija
+## Security and automation
 
-Registracija kreira nalog sa BCrypt hashom, ulogom VISITOR i profilom posetioca u jednoj transakciji. Klijent ne bira ulogu, aktivnost ili hash. Datum registracije/dodele i poslednja uspešna prijava se evidentiraju automatski.
+Registration atomically creates a BCrypt account, VISITOR role, and visitor profile. Clients cannot choose their initial role, active state, or password hash. Registration/assignment times and successful last login are recorded automatically.
 
-JWT: HS256 preko Spring Security/Nimbus; sub je ID naloga, exp je 30 minuta, issuer museum-backend. Ključ dolazi isključivo iz environment promenljive JWT_SECRET (najmanje 32 UTF-8 bajta). Nema podrazumevanog ključa, tokeni/lozinke se ne loguju. Testovi generišu zaseban nasumičan ključ. Za svaki token se učitavaju trenutne uloge i aktivnost naloga iz baze, pa deaktivacija i oduzimanje uloge važe odmah. Nema refresh tokena u ovoj fazi.
+JWT uses HS256 through Spring Security/Nimbus, an account-ID subject, a 30-minute expiry, and issuer `museum-backend`. The key comes from the process-level `JWT_SECRET` and requires at least 32 UTF-8 bytes. There is no default key. Tests generate independent random keys. Current account activity and roles are loaded for each token, so deactivation and role removal take effect immediately. This design does not include refresh tokens.
 
-Local profil zadržava samo postojeće anonimne CRUD rute prvog podsistema. Administratorske operacije i privatni profili ostaju zaštićeni i lokalno. Nema unapred kreiranog administratora ili fiksne lozinke; prvi administrator se dodeljuje postojećem nalogu eksplicitnom lokalnom DB administracijom, opisano u README.
+Protected operations remain protected in the local profile. Local seed accounts now include an administrator; see the [root guide](../README.md#local-accounts). Earlier subsystem reports describing anonymous catalog writes or manual-only administrator provisioning are historical.
 
-## Precizni tipovi kolona
+## Column types
 
-Svi ID i FK iz prethodne tabele su PostgreSQL bigint (Java Long). Samo samostalni PK id imaju GENERATED BY DEFAULT AS IDENTITY; podtipovi i spojne tabele ne generišu nove ključeve.
+All IDs and FKs above are PostgreSQL bigint (Java Long). Only standalone `id` primary keys generate identities; subtype and join tables do not generate separate keys.
 
-| Tabela | Ostale kolone sa SQL tipovima |
+| Table | Other columns and SQL types |
 |---|---|
 | korisnicki_nalog | email text, lozinka_hash text, aktivan boolean, datum_registracije timestamptz, poslednja_prijava timestamptz |
 | uloga | naziv varchar(32), opis text |
@@ -73,40 +73,40 @@ Svi ID i FK iz prethodne tabele su PostgreSQL bigint (Java Long). Samo samostaln
 | dogadjaj | naziv text, tip varchar(32), pocetak timestamptz, kraj timestamptz, kapacitet integer, jezik text, status varchar(32) |
 | prijava_na_dogadjaj | datum_prijave timestamptz, status varchar(32) |
 
-FK ciljevi: nalog_id i dodelio_id → korisnicki_nalog.id; uloga_id → uloga.id; muzej_id → muzej.id; nadredjeni_id → zaposleni.id; zaposleni_id u svih pet podtipova → zaposleni.id; posetilac_id → posetilac.id; interesovanje_id → interesovanje.id; izlozba_id → izlozba.id; vodic_id → vodic.zaposleni_id; dogadjaj_id → dogadjaj.id.
+FK targets: `nalog_id` and `dodelio_id` → `korisnicki_nalog.id`; `uloga_id` → `uloga.id`; `muzej_id` → `muzej.id`; `nadredjeni_id` → `zaposleni.id`; subtype `zaposleni_id` → `zaposleni.id`; `posetilac_id` → `posetilac.id`; `interesovanje_id` → `interesovanje.id`; `izlozba_id` → `izlozba.id`; `vodic_id` → `vodic.zaposleni_id`; `dogadjaj_id` → `dogadjaj.id`.
 
-CHECK skupovi: tip_zaposlenog = CURATOR/GUIDE/CASHIER/MANAGER/ADMINISTRATOR; uloga.naziv dodatno dozvoljava VISITOR; dogadjaj.tip = TURA/PREDAVANJE/RADIONICA; dogadjaj.status = PLANIRAN/POPUNJEN/ZAVRSEN/OTKAZAN; prijava.status = PRIJAVLJEN/PRISUSTVOVAO/OTKAZAN. Kapacitet >= 0, kraj > pocetak, nadredjeni_id <> id. Regex ograničava lozinka_hash na BCrypt zapis. Nije uveden proizvoljan opseg za nivo interesovanja.
+CHECK sets: employee type = CURATOR/GUIDE/CASHIER/MANAGER/ADMINISTRATOR; role names also include VISITOR. Event type = TURA/PREDAVANJE/RADIONICA; event status = PLANIRAN/POPUNJEN/ZAVRSEN/OTKAZAN; registration status = PRIJAVLJEN/PRISUSTVOVAO/OTKAZAN. Capacity >= 0, end > start, and supervisor ID differs from employee ID. A regular expression restricts password hashes to BCrypt format. Interest level has no arbitrary range.
 
-## REST rute i RBAC
+## REST routes and RBAC
 
-U narednoj tabeli CRUD znači GET kolekcije, POST kolekcije, GET/PUT/DELETE /{id}. POST vraća 201 i Location, PUT/GET 200, DELETE 204. Neispravan zahtev daje 400, nedostajući zapis 404, konflikt 409, nedostajuća/nevažeća autentifikacija 401 i nedovoljna uloga 403. Centralni postojeći ApiExceptionHandler obrađuje validaciju i integritet; dodatni AuthenticationExceptionHandler obrađuje autentifikaciju i autorizaciju u MVC sloju. JPA entiteti se ne vraćaju kroz REST.
+CRUD denotes collection GET/POST and item GET/PUT/DELETE. POST returns 201 with Location, GET/PUT 200, and DELETE 204. Invalid requests return 400; missing records 404; conflicts 409; missing/invalid authentication 401; insufficient permissions 403. Central exception handlers process validation, integrity, authentication, and authorization. REST responses do not serialize JPA entities.
 
-| Ruta | Metode | Pristup |
+| Route | Methods | Access |
 |---|---|---|
-| /api/health | GET | javno, postojeća ruta |
-| /api/auth/register | POST | javno; email, password, firstName, lastName, phone?, recommendationsConsent |
-| /api/auth/login | POST | javno; isključivo email i password |
-| /api/accounts/me | GET | aktivan autentifikovani nalog |
-| /api/admin/accounts | CRUD | ADMINISTRATOR; POST koristi registracijski DTO, formira nalog i profil posetioca |
+| /api/health | GET | Public |
+| /api/auth/register | POST | Public; email, password, firstName, lastName, optional phone, recommendationsConsent |
+| /api/auth/login | POST | Public; email and password |
+| /api/accounts/me | GET | Active authenticated account |
+| /api/admin/accounts | CRUD | ADMINISTRATOR; POST creates an account and visitor profile |
 | /api/admin/accounts/{id}/roles/{roleId} | POST, DELETE | ADMINISTRATOR |
 | /api/admin/roles | CRUD | ADMINISTRATOR |
-| /api/employees | CRUD | ADMINISTRATOR, administracija korisničkih profila zaposlenih |
-| /api/visitors | CRUD | ADMINISTRATOR, administracija korisničkih profila posetilaca |
-| /api/visitors/me | GET, PUT | VISITOR, sopstveni profil |
-| /api/visitors/me/interests | GET | VISITOR, sopstvena interesovanja |
-| /api/visitors/me/interests/{id} | PUT, DELETE | VISITOR, sopstveni izbor interesovanja |
-| /api/visitors/me/registrations | GET | VISITOR, sopstvene prijave |
-| /api/interests | CRUD | GET javno; izmene CURATOR/ADMINISTRATOR (teme/sistemski šifarnik) |
-| /api/events | CRUD | GET javno; izmene GUIDE |
-| /api/events/{id}/registrations | POST | VISITOR, prijava sebe |
-| /api/events/{id}/registrations | GET | GUIDE, pregled prijavljenih |
-| /api/events/{id}/registrations/me | DELETE | VISITOR, odjava sebe |
-| /api/events/{id}/registrations/{visitorId} | PUT | GUIDE, izmena statusa prijave |
+| /api/employees | CRUD | ADMINISTRATOR |
+| /api/visitors | CRUD | ADMINISTRATOR |
+| /api/visitors/me | GET, PUT | VISITOR, own profile |
+| /api/visitors/me/interests | GET | VISITOR, own interests |
+| /api/visitors/me/interests/{id} | PUT, DELETE | VISITOR, own interest selection |
+| /api/visitors/me/registrations | GET | VISITOR, own registrations |
+| /api/interests | CRUD | Public GET; CURATOR/ADMINISTRATOR writes |
+| /api/events | CRUD | Public GET; GUIDE writes |
+| /api/events/{id}/registrations | POST | VISITOR, self-registration |
+| /api/events/{id}/registrations | GET | GUIDE, registration list |
+| /api/events/{id}/registrations/me | DELETE | VISITOR, own cancellation |
+| /api/events/{id}/registrations/{visitorId} | PUT | GUIDE, registration status updates |
 
-RBAC prati §3: vodič upravlja događajima i prijavljenim posetiocima; administrator upravlja nalozima, profilima, ulogama i sistemskim šifarnicima; kustos temama. Nema implicitne administratorske dozvole za upravljanje događajima: administratoru se za to eksplicitno dodeljuje i GUIDE. Specifikacija ne ograničava vodiča isključivo na događaje kojima je lično pridružen, pa se takvo dodatno pravilo ne uvodi. CASHIER i MANAGER nemaju nova ovlašćenja za upis u ovom podsistemu; prodaja i analitika nisu implementirane. Zaposlenje/podtip ne menja RBAC uloge.
+Role permissions are explicit: an administrator is not automatically a guide and needs GUIDE for event management. CASHIER sales and MANAGER analytics are implemented in their respective modules, not granted by employee subtype.
 
-Šest uloga se inicijalizuje V2 migracijom. POST nove uloge dozvoljava samo odobrene nazive; postojeći naziv daje 409. DELETE dodeljene uloge sprečava FK. PUT ne menja naziv postojeće uloge. Dodavanje novih vrsta ovlašćenja nije deo ove faze.
+V2 initializes six roles. New role requests accept only supported names; duplicates return 409. Assigned roles cannot be deleted due to FKs, and PUT does not rename existing roles.
 
-Automatski se ažurira status PLANIRAN/POPUNJEN nakon prijave, odjave, izmene statusa prijave ili kapaciteta. OTKAZAN/ZAVRSEN ostaju očuvani. Odloženi DB trigger dodatno proverava kapacitet, a servis zaključava događaj pre promene. Nema novih periodičnih poslova za ulaznice, posete, QR, TTS ili Neo4j.
+Registration, cancellation, attendance updates, and capacity changes recalculate PLANIRAN/POPUNJEN while preserving cancelled/finished states. A deferred trigger checks capacity, and services lock the event before changes. Later journey jobs maintain time-dependent statuses and refresh the graph.
 
-Potvrda korisnika od 22.09.2026: email predstavlja korisničko ime za prijavu; odvojen username, korisnicko_ime ili login_name nije deo šeme niti DTO ugovora.
+The approved login interpretation uses email; separate `username`, `korisnicko_ime`, and `login_name` fields are not part of the schema or DTO contract.

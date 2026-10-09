@@ -1,87 +1,57 @@
-# Provera implementacije podsistema 1
+# Subsystem 1 verification
 
-Datum: 2026-09-22. Izvorni EER i specifikacija nisu menjani. Nema commita ni pusha.
+Date: 2026-09-22. This is a historical implementation-stage report. It does not describe the current feature set or establish that a later revision passes. The source specification and EER models were unchanged; no commit or push was made during this review.
 
-## Rezultati
+## Recorded results
 
-| Provera | Rezultat |
+| Check | Result |
 |---|---|
-| Maven Wrapper clean test, Java 21 | BUILD SUCCESS; 23 testa; 0 failures, 0 errors, 0 skipped |
-| Service/value-object testovi | 10 uspešnih |
-| PostgreSQL/REST integracioni testovi | 10 uspešnih (uključuje parametrizovane slučajeve) |
-| Postojeći health testovi | 2 uspešna |
-| Postojeći contextLoads | uspešan; sada koristi PostgreSQL Testcontainers |
-| Flyway na izolovanom PostgreSQL 17.9 | V1 uspešno primenjen |
-| JPA/Hibernate validate | svih 10 entiteta uspešno validirano |
-| docker compose config --quiet | exit 0; lozinke nisu ispisivane |
-| docker compose up -d / ps | oba servisa healthy; PostgreSQL 15432, Neo4j 7474/7687 |
-| Razvojni PostgreSQL localhost:15432/museum | Flyway primenio V1; Hibernate validate prošao |
-| Lokalni backend | uspešno pokrenut na 127.0.0.1:8081 uz local profil |
-| git diff --check | bez grešaka |
-| Tajne | vrednosti tajni iz .env nisu nađene u Git kandidatima; .env ignorisan i nije praćen |
+| Maven Wrapper clean test, Java 21 | BUILD SUCCESS; 23 tests; 0 failures, 0 errors, 0 skipped |
+| Service/value-object tests | 10 passed |
+| PostgreSQL/REST integration tests | 10 passed, including parameterized cases |
+| Health tests | 2 passed |
+| Application context test | Passed using PostgreSQL Testcontainers |
+| Flyway on isolated PostgreSQL 17.9 | V1 applied successfully |
+| JPA/Hibernate validation | All 10 entities validated |
+| docker compose config --quiet | Exit 0; credentials were not printed |
+| docker compose up -d / ps | Both services healthy; PostgreSQL 15432, Neo4j 7474/7687 |
+| Development PostgreSQL | V1 applied; Hibernate validation passed |
+| Local backend | Started on 127.0.0.1:8081 |
+| git diff --check | Passed |
+| Secret check | Actual .env secret values were not found in Git candidates; .env was ignored |
 
-Testcontainers koristi zaseban privremeni PostgreSQL kontejner, bez pristupa razvojnim podacima. Testovi se ne preskaču ako Docker nije dostupan: clean test zahteva Docker Desktop. H2 više nije korišćen jer ne može verno proveriti PostgreSQL exclusion constraint i odložene trigere.
+Testcontainers used a separate temporary PostgreSQL instance, without resetting development data. Docker was required; tests were not skipped when unavailable. H2 was replaced because it cannot faithfully verify PostgreSQL exclusion constraints and deferred triggers.
 
-## Stvarni HTTP zahtevi
+## Recorded HTTP checks
 
-Osnovni URL: http://localhost:8081. Navedeni ID-evi su stvarni rezultati ove provere; probni zapisi su na kraju uklonjeni. Za ponovno izvršavanje koristiti novovraćene ID-eve.
+The base URL was `http://localhost:8081`. Temporary records were removed after the review. Repeated checks must use newly returned IDs.
 
-POST `/api/museums` — 201:
+| Operation | Recorded result |
+|---|---|
+| POST /api/museums | 201, museum ID 1 |
+| POST /api/halls with museumId 1 | 201, hall ID 1 |
+| POST /api/exhibitions with a nonempty terms list | 201, exhibition and admission-time ID 1 |
+| GET /api/exhibitions/1 | 200, matching saved data |
+| GET /api/health | 200, application museum-backend, status UP |
+| DELETE /api/exhibition-terms/1 | 409, cannot remove or move the last exhibition term |
+| POST /api/halls with museumId 9223372036854775807 | 404, museum not found |
+| DELETE /api/exhibitions/1 | 204, admission times removed in the same transaction |
+| DELETE /api/halls/1 | 204 |
+| DELETE /api/museums/1 | 204 |
 
-```json
-{"name":"Provera podsistema 1","address":"Novi Sad","active":true}
-```
+The exhibition interval was 2030-01-01 to 2030-02-01, with a 20-place admission time on 2030-01-05 from 10:00 to 11:00 UTC. The hall capacity was 30. PUT, additional admission-time creation, validation, all GET/DELETE endpoints, and rollback of dependent deletions were also covered by integration tests.
 
-Odgovor:
+## Scope and decisions at that date
 
-```json
-{"id":1,"name":"Provera podsistema 1","foundationYear":null,"address":"Novi Sad","description":null,"active":true}
-```
+V1 introduced ten tables, primary/foreign/unique/check constraints, indexes, the `btree_gist` extension, and two deferred constraint triggers. It did not include subsystem 2 or 3 tables. See the [relational model](relational-model-subsystem-1.md) and `V1__create_first_subsystem.sql`.
 
-POST `/api/halls` — 201:
+Documented decisions included optional descriptive fields, UTC/timestamptz, half-open intervals, cancelled exhibitions not occupying halls, and mandatory initial admission times. Participation and both composite keys retained the approved mapping. No hall activation field was added.
 
-```json
-{"museumId":1,"name":"Sala za proveru","capacity":30}
-```
+At this early stage, local catalog CRUD was anonymous, and authentication, Angular, QR/TTS, accounts, sales, visits, and recommendations had not yet been implemented. Those statements are historical: the current application implements those modules and protects management writes in the local profile.
 
-Odgovor:
+## Historical file inventory
 
-```json
-{"id":1,"museumId":1,"name":"Sala za proveru","area":null,"floor":null,"capacity":30}
-```
-
-POST `/api/exhibitions` — 201:
-
-```json
-{"hallId":1,"name":"Izlozba za proveru","start":"2030-01-01T00:00:00Z","end":"2030-02-01T00:00:00Z","status":"PLANIRANA","onlineVisible":true,"terms":[{"start":"2030-01-05T10:00:00Z","end":"2030-01-05T11:00:00Z","capacity":20,"status":"OTVOREN"}]}
-```
-
-Odgovor (isti podaci potvrđeni GET `/api/exhibitions/1`, HTTP 200):
-
-```json
-{"id":1,"hallId":1,"name":"Izlozba za proveru","description":null,"start":"2030-01-01T00:00:00Z","end":"2030-02-01T00:00:00Z","status":"PLANIRANA","onlineVisible":true,"terms":[{"id":1,"exhibitionId":1,"start":"2030-01-05T10:00:00Z","end":"2030-01-05T11:00:00Z","capacity":20,"status":"OTVOREN"}]}
-```
-
-- GET `/api/health` → 200, `{"application":"museum-backend","status":"UP"}`.
-- DELETE `/api/exhibition-terms/1` → 409, `Cannot remove or move the last exhibition term`.
-- POST `/api/halls` sa `museumId=9223372036854775807` → 404, `Museum not found: 9223372036854775807`.
-- DELETE `/api/exhibitions/1` → 204 (uklanja njegove termine u istoj transakciji).
-- DELETE `/api/halls/1` → 204.
-- DELETE `/api/museums/1` → 204.
-
-PUT, dodatni POST termina, validacija, svi GET/DELETE endpointi i rollback zavisnih brisanja provereni su i integracionim testovima.
-
-## Obuhvat i odluke
-
-V1 sadrži deset tabela, PK/FK/UNIQUE/CHECK ograničenja, indekse, btree_gist extension i dva odložena constraint triggera. Nema tabela podsistema 2/3. Sve kolone i mapiranja su u `relational-model-subsystem-1.md`; izvršivi SQL je `V1__create_first_subsystem.sql`.
-
-Nema preostalih kontradikcija koje blokiraju ovaj podsistem. Dokumentovane implementacione odluke: opciona opisna polja, UTC/timestamptz, poluotvoreni intervali, otkazane izložbe ne blokiraju salu, obavezni početni termini pri POST izložbe. Odobreno mapiranje gerunda i oba složena ključa je očuvano. Sale nemaju novo polje aktivan; time nije proširen odobreni model.
-
-CRUD je razvojno otvoren samo uz profil local. Ostali profili zadržavaju zaštitu. Autentifikacija, Angular, QR/TTS automatizacija, korisnici, prodaja, posete i preporuke nisu implementirani.
-
-## Git status i kompletan spisak fajlova
-
-`M` = izmenjen praćen fajl; `??` = nov/nepraćen. Dokumenti u `docs/eer` i `docs/specification` već su bili nepraćeni pre početka implementacije i nisu menjani.
+The following status snapshot belongs to the original review, not the current working tree. `M` means modified; `??` means untracked. Source documents under `docs/eer` and `docs/specification` were already untracked and were not edited.
 
 ```text
  M README.md

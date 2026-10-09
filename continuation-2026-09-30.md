@@ -1,244 +1,130 @@
-# Nastavak projekta — 30.09.2026.
+# Implementation review — 2026-09-30
 
-## Zatečeno stanje i granice rada
+This is an archived development-stage report. Its module gaps, account inventory, and test counts describe 2026-09-30, not the current application. Follow the [root README](README.md) and [later submission audit](docs/submission-readiness.md) for maintained instructions and the latest recorded integrated review.
 
-Read-only pregled obuhvatio je `git status`, `git diff --stat`, diff postojećih
-izmena, poslednje commitove, kontrolere/servise/DTO-e, security, Angular rute,
-guardove, navigaciju, forme, testove, seed i postojeće izveštaje. Nema AGENTS.md
-u projektu. Pre izmena prikazan je checkpoint u razgovoru.
+## Initial state and scope
 
-HEAD je `a380b73 Add responsive public digital catalog`; prethodni commitovi:
-`b7e49a4` katalog API, `68826c6` skeniranje, `48d8fc1` local seed i Angular,
-`455cce3` prodaja/posete/preporuke/Swagger, `20cf119` drugi podsistem.
-Zatečeno je 16 izmenjenih praćenih i 17 nepraćenih fajlova. Katalog je već bio
-implementiran; necommitovani Curator je imao funkcionalni CRUD i dokumentaciju.
-Guide je već imao većinu implementacije, local seed i testove, ali nije imao
-završni izveštaj, prikaz imena posetilaca ni zaštitu od zadržavanja prethodnog
-zapisa pri promeni ID-ja u Angular ruti.
+The review covered Git status/diffs/history, controllers, services, DTOs, security, Angular routes/guards/navigation/forms, tests, seed data, and existing reports. No AGENTS.md was present.
 
-Sačuvane su sve zatečene izmene. Nisu menjani EER, odobrena specifikacija,
-Flyway V1–V3, PostgreSQL šema niti entiteti. Nema commita/pusha, reset/checkout
-komandi, brisanja razvojnih podataka ili uvođenja novih entiteta za ture.
+The recorded HEAD was `a380b73 Add responsive public digital catalog`, following catalog API, scanning, local seed/frontend, journey/Swagger, and subsystem 2 commits. The initial working tree contained 16 modified tracked files and 17 untracked files. The catalog was implemented, Curator CRUD was present in local changes, and most Guide features existed. Remaining Guide issues included attendee names and stale form data after route-ID changes.
 
-## Konačni status modula
+Existing changes were preserved. The review did not alter EER diagrams, the specification, Flyway V1–V3, the schema, or entities. It did not reset/check out files, delete development data, commit, or push.
 
-„Gotovo” označava funkcionalni obim pregledanog modula, ne produkcionu spremnost
-celog projekta. Automatizovane provere navedene su zasebno ispod.
+## Module status at that date
 
-| Modul | Backend | Frontend | Security | Demo podaci | Testovi | Status |
-|---|---|---|---|---|---|---|
-| Visitor | Profil/interesovanja, karte, posete, ocene, scan, događaji | Povezane stranice i sopstvena prijava/otkazivanje | VISITOR, identitet iz JWT, vlasništvo posete/karte | Visitor i povezani katalog | Journey, local journey, auth, scan, events | Gotovo za postojeće tokove |
-| Cashier | Prodaja i validacija karata | Validacija postoji; prodajna forma nedostaje | CASHIER; prednost u višestrukim ulogama | Staff CASHIER+GUIDE | Journey i auth regresije | Delimično kao celovit modul; postojeći tok očuvan |
-| Digitalni katalog | Javni eksponati/autori/autorstva/učešća | /exhibits, /exhibits/:id, /authors, /authors/:id; filteri, stanja i responsive CSS | Javni GET; DTO bez qrToken/qrPath i internih polja | 9 eksponata, 2 autora, 3 izložbe u local seedu | Catalog i ExhibitCatalog u oba profila; frontend catalog | Gotovo |
-| Curator | Eksponati, autori, autorstva, učešća, serverski UUID QR, digitalni sadržaj | Dashboard, CRUD, profil, QR; ispravljena promena ID-ja forme | CURATOR ili ADMINISTRATOR; parent/child guards i API zaštita | Local curator sa podtipom | CRUD, QR stabilnost, zabrane, konflikti, frontend curator | Gotovo za traženi obim |
-| Guide i događaji | CRUD, kapacitet/zaključavanje, prijave/statusi, sopstveni profil, imena prijavljenih | Guide meni/dashboard/liste/forme/prijave/profil; visitor događaji i otkazivanje; responsive CSS | GUIDE upravlja; VISITOR menja samo sopstvenu prijavu; privatna lista | Local Guide+Employee+podtip i 3 dodatna događaja | People integracija/konkurentnost, local seed, frontend events | Gotovo za traženi obim |
-| Manager analitika | Samo Employee podtip; nema analitičkih endpointa | Nedostaje | Nema posebnih analitičkih pravila | Nema demo naloga | Testiran podtip, ne analitika | Nedostaje |
-| Administrator | Nalozi/uloge/zaposleni, muzeji/sale i dozvole kataloga | Nema zasebnog administratorskog modula; može u Curator | ADMINISTRATOR API pravila | Nema demo naloga | Backend administrativni CRUD i role matrix | Delimično |
-| Neo4j preporuke | Projekcija sadržaja, skorovi, preporuke i rute; fallback | Visitor preporuke i rute posete | VISITOR/vlasništvo; graf bez ličnih podataka | Katalog i scan podaci | GraphProjection i Journey | Gotovo za postojeći obim |
+“Complete” referred to the reviewed functional scope, not production readiness.
 
-## Dovršeno u ovom radu
-
-- Popravljen Windows Maven Wrapper: null/prazan `Target` lokalnog Maven keša
-  više ne izaziva grešku pre kompilacije. Verzija Maven distribucije nije menjana.
-- Zaštićeni GET prijava sada vraća `ManagedRegistrationResponse` sa imenom i
-  prezimenom posetioca. Visitor odgovor ostaje isti. Nema emaila, telefona ili
-  hash-a lozinke. EntityGraph učitava posetioca sa prijavama.
-- Guide ekran prikazuje ime, prezime, ID i status; promena statusa čuva ime
-  dok se podaci ponovo učitavaju.
-- `RecordRouteReuseStrategy` ponovo kreira samo označene detalje/forme kada se
-  promeni ID. Sprečava da URL drugog događaja/autora/eksponata/učešća/sadržaja
-  nastavi sa starom formom ili potvrdom. Ostale rute koriste postojeće ponašanje.
-- Dodati regresioni testovi promene URL-a tokom zahteva, čuvanja drugog događaja
-  i autora, prikaza imena i privatnosti backend odgovora.
-- Neispravan Guide edit ID prikazuje grešku i ne može kreirati novi događaj.
-- Ažurirani demo nalozi u dokumentaciji i zastareo README status.
-
-## Rute i dozvole
-
-| Frontend | Namena / API |
+| Module | Recorded state on 2026-09-30 |
 |---|---|
-| /exhibits, /exhibits/:id | GET /api/exhibits, /api/exhibits/{id}, /api/exhibits/{id}/participations |
-| /authors, /authors/:id | GET /api/authors, /api/authors/{id} |
-| /curator, /curator/profile | Stvarni brojevi kataloga; GET /api/accounts/me |
-| /curator/exhibits[/new ili /:id/edit] | GET/POST /api/exhibits; PUT/DELETE /api/exhibits/{id}; GET /api/exhibits/{id}/management |
-| /curator/authors[/new ili /:id/edit] | GET/POST /api/authors; GET/PUT/DELETE /api/authors/{id} |
-| Autorstva na edit strani eksponata | GET /api/exhibits/{id}/authorships/management; PUT/DELETE /api/exhibits/{id}/authorships/{authorId} |
-| /curator/participations[/new ili /:id/edit] | GET/POST /api/exhibit-participations; GET/PUT/DELETE /api/exhibit-participations/{id} |
-| /curator/digital-content[/new ili /:id/edit] | GET /api/exhibit-participations/{id}/digital-content; POST /api/digital-content; GET/PUT/DELETE /api/digital-content/{id} |
-| /guide, /guide/profile | GET /api/events i /api/guides/me; dashboard koristi stvarne brojeve |
-| /guide/events, /guide/events/new, /guide/events/:id/edit | GET/POST /api/events; GET/PUT/DELETE /api/events/{id} |
-| /guide/registrations, /guide/events/:id/registrations | GET /api/events/{id}/registrations; PUT /api/events/{id}/registrations/{visitorId} |
-| /events, /events/:id | Javni GET /api/events i /api/events/{id}; GET /api/visitors/me/registrations samo za visitor |
-| Prijava/otkazivanje na /events/:id | POST /api/events/{id}/registrations; DELETE /api/events/{id}/registrations/me |
-| /cashier | POST /api/cashier/validate; GET /api/tickets/{id} |
-| /tickets, /visits, /visits/:id, /scan, /recommendations, /profile | Postojeći /api/tickets, /api/visits, /api/recommendations/exhibitions, /api/visitors/me tokovi |
+| Visitor | Profile/interest API, tickets, visits, ratings, scans, events, own registrations, ownership checks, and related UI flows implemented |
+| Cashier | Sales/validation API implemented; validation UI present, sales form still missing |
+| Public catalog | Exhibit/author/participation browsing, filters, responsive states, and redacted public DTOs implemented |
+| Curator | CRUD, authorships, participation, stable server QR identity, reference content, dashboard/profile implemented |
+| Guide/events | CRUD, capacity locking, registrations, attendee names, profile, visitor event actions, and responsive UI implemented |
+| Manager | Employee subtype existed; analytics API/UI still missing |
+| Administrator | Account/role/employee and catalog API permissions existed; dedicated administration frontend still missing |
+| Neo4j | Projection, scores, recommendations, routes, and fallback implemented without exporting personal data |
 
-| Uloga | Javni GET katalog/događaji | Curator API/UI | Guide API/UI | Visitor prijave |
+At that stage, local catalog counts were 9 exhibits, 2 authors, and 3 exhibitions. Later work expanded content and implemented Manager analytics, Administrator UI, Cashier sales UI, and stored media/TTS. Historical gaps above must not be read as current limitations.
+
+## Changes completed in this review
+
+- Corrected Windows Maven Wrapper handling of a null/empty local cache Target without changing the Maven distribution version.
+- Added protected `ManagedRegistrationResponse` data containing visitor first/last names, without exposing email, phone, or password hash. EntityGraph loaded the visitor with registrations.
+- Displayed attendee name, ID, and status in the Guide workspace and retained names while updates reloaded.
+- Added `RecordRouteReuseStrategy` for marked detail/editor routes when record IDs change, preventing stale forms or confirmations from targeting the previous record.
+- Added regression tests for route changes during requests, editing a second event/author, attendee names, and backend response privacy.
+- Prevented invalid Guide edit IDs from becoming event-creation actions.
+- Updated account documentation and then-obsolete README status.
+
+## Routes and permissions reviewed
+
+| Frontend | API/function |
+|---|---|
+| /exhibits, /exhibits/:id | Public exhibits and exhibition participations |
+| /authors, /authors/:id | Public author list/details |
+| /curator, /curator/profile | Catalog counts and own account |
+| /curator/exhibits, new/edit routes | Exhibit CRUD, management DTO, authorships |
+| /curator/authors, new/edit routes | Author CRUD |
+| /curator/participations, new/edit routes | Participation CRUD |
+| /curator/digital-content, new/edit routes | Content references by participation |
+| /guide, /guide/profile | Events and /api/guides/me |
+| /guide/events, new/edit routes | Event CRUD |
+| /guide/registrations, /guide/events/:id/registrations | Protected registration lists and status changes |
+| /events, /events/:id | Public events and own visitor registration/cancellation |
+| /cashier | Ticket lookup and validation |
+| /tickets, /visits, /visits/:id, /scan, /recommendations, /profile | Visitor journey APIs |
+
+| Role | Public catalog/events | Curator API/UI | Guide API/UI | Visitor registration |
 |---|---|---|---|---|
-| Anonimni | Da | API 401; UI login | API 401; UI login | 401 |
-| VISITOR | Da | 403 | 403 | Sopstvene |
-| CASHIER | Da | 403 | 403 za nalog bez GUIDE | 403 |
-| CURATOR | Da | Da | 403 | 403 |
-| GUIDE | Da | 403 | Da | 403 |
-| ADMINISTRATOR | Da | Da | 403 bez GUIDE | 403 |
-| MANAGER | Da | 403 | 403 | 403 |
+| Anonymous | Allowed | API 401; UI login | API 401; UI login | 401 |
+| VISITOR | Allowed | 403 | 403 | Own records |
+| CASHIER | Allowed | 403 | 403 unless also GUIDE | 403 |
+| CURATOR | Allowed | Allowed | 403 | 403 |
+| GUIDE | Allowed | 403 | Allowed | 403 |
+| ADMINISTRATOR | Allowed | Allowed | 403 unless also GUIDE | 403 |
+| MANAGER | Allowed | 403 | 403 | 403 |
 
-Backend proverava sve stvarne uloge naloga; staff sa CASHIER+GUIDE zato ima oba
-API prava. Frontend zadržava prioritet CASHIER, zatim CURATOR/ADMINISTRATOR,
-zatim GUIDE, zatim VISITOR. Postojeći visitorGuard usmerava zaposlene sa javnih
-visitor ekrana u njihov radni prostor; anonimni i visitor imaju javni katalog.
-Svi vodiči mogu upravljati događajima prema postojećoj politici; nije uvedeno
-novo ograničenje vlasništva ili muzeja.
+The backend checked every assigned role. The historical combined CASHIER/GUIDE account therefore had both API permissions, while frontend navigation prioritized the cashier workspace. All guides could manage events under the reviewed policy; no additional guide ownership/museum rule was introduced.
 
-Kapacitet štite pesimističko zaključavanje događaja, složeni ključ prijave i
-postojeći DB trigger. Aktivna duplikat prijava daje 409; otkazana se može ponovo
-aktivirati samo dok je događaj otvoren i ima mesta. Početak događaja zatvara
-prijave. Statusi su PLANIRAN/POPUNJEN/ZAVRSEN/OTKAZAN i
-PRIJAVLJEN/PRISUSTVOVAO/OTKAZAN. Visitor ne može otkazati evidentirano prisustvo.
-Brisanje događaja sa istorijom prijava daje 409 zbog RESTRICT veze; UI nudi
-promenu statusa u Otkazan. UI prevodi 400/401/403/404/409 u razumljive poruke,
-bez ispisivanja neobrađenog serverskog sadržaja.
+Capacity used pessimistic event locking, registration composite keys, and database triggers. Duplicate active registrations returned 409. Cancelled registrations could reactivate only while the event was open with free places. Registration closed at event start. Visitors could not cancel recorded attendance. Events with registration history could not be deleted; cancellation preserved history. UI error handling translated 400/401/403/404/409 without rendering raw server output.
 
-## Demo nalozi
+## Historical accounts
 
-Local seed i testovi koriste sledeće naloge; lozinka je `MuseumDemo!2026`.
-U PostgreSQL-u se čuva BCrypt hash.
+The earlier local seed used `demo.visitor@museum.local`, `demo.staff@museum.local`, `demo.curator@museum.local`, and `demo.guide@museum.local`. These addresses are historical identifiers, not current login instructions. They were later replaced by the realistic accounts listed in the [root account table](README.md#local-accounts). The local password is maintained in `DemoDataSeeder.PASSWORD` and is not reproduced here.
 
-| Nalog | Uloge / zapis |
-|---|---|
-| demo.visitor@museum.local | VISITOR + Visitor |
-| demo.staff@museum.local | CASHIER i GUIDE; postojeći Employee/Guide i prioritet blagajne |
-| demo.curator@museum.local | CURATOR + Employee/Curator; samo local |
-| demo.guide@museum.local | GUIDE + Employee/Guide; samo local |
+The isolated seed tests covered all four earlier accounts. A read-only development query confirmed visitor, staff, and curator records; the guide account was to be created on the next local startup. Existing passwords were not reset.
 
-Sva četiri naloga potvrđuje seed u izolovanoj test bazi. Read-only SQL provera
-postojeće razvojne baze potvrdila je visitor, staff i curator naloge, njihove
-uloge i BCrypt hash format; demo.guide još nije prisutan u toj bazi. Pokretanje
-nove verzije sa local profilom idempotentno ga kreira zajedno sa Guide podtipom
-i događajima. Seed ne resetuje lozinku postojećeg naloga. Nema demo
-Manager/Administrator naloga.
+## Recorded verification
 
-## Provere
+The final `mvnw.cmd clean test` passed **110/110 tests**, with 0 failures, errors, or skipped tests, in 7 minutes 4 seconds, finishing at 13:25 CEST on 2026-09-30. It followed an earlier full pass to include final backend changes.
 
-Prvi puni `mvnw.cmd clean test` uz Java 21 i generisan privremeni JWT_SECRET:
-110 testova, 0 failures/errors/skipped, BUILD SUCCESS. Pošto su poslednje backend
-dopune nastale tokom tog izvršenja, pokrenut je i završni puni skup.
-Završni `mvnw.cmd clean test`: **110/110, 0 failures, 0 errors, 0 skipped,
-BUILD SUCCESS**, 7 min 4 s; završen 30.09.2026. u 13:25 CEST.
-PostgreSQL 17.9 je u izolovanom Testcontainers okruženju primenio neizmenjene
-V1–V3 i prošao Hibernate validate. GraphProjection koristi stvarni Neo4j 5.26
-kontejner. Local seed je testiran za idempotentnost, uloge i podtipove.
-
-| Backend skup | Testova | Rezultat |
+| Backend suite | Tests | Result |
 |---|---:|---|
-| CatalogIntegration / CatalogService | 10 + 10 | Svi prošli |
-| ExhibitCatalog / LocalExhibitCatalog | 16 + 16 | Svi prošli |
-| HealthController | 2 | Svi prošli |
-| GraphProjection | 3 | Svi prošli |
-| JourneyIntegration / LocalDemoJourney | 16 + 4 | Svi prošli |
-| MuseumBackendApplication / OpenApi | 1 + 2 | Svi prošli |
-| PeopleIntegration / PeopleService | 23 + 7 | Svi prošli |
+| CatalogIntegration / CatalogService | 10 + 10 | Passed |
+| ExhibitCatalog / LocalExhibitCatalog | 16 + 16 | Passed |
+| HealthController | 2 | Passed |
+| GraphProjection | 3 | Passed |
+| JourneyIntegration / LocalDemoJourney | 16 + 4 | Passed |
+| MuseumBackendApplication / OpenApi | 1 + 2 | Passed |
+| PeopleIntegration / PeopleService | 23 + 7 | Passed |
 
-Lokalni ignorisani logovi: backend-final-verification.log, frontend-tests.log,
-frontend-build.log i schema-validation.log. Privremeni JWT secret generisan je
-za proces; nije upisan u izvorni kod niti dokumentaciju.
-TypeScript `--noEmit -p tsconfig.app.json`: prošao.
-Frontend `npm test`: 68/68, pet fajlova, bez neuspeha.
-Angular production build: prošao; postojeće CommonJS upozorenje za `qrcode`.
-Prvi Angular pokušaj blokirao je sandbox pristup roditeljskim direktorijumima;
-isti postupak sa proširenim dozvolama je prošao.
+PostgreSQL 17.9 Testcontainers applied unchanged V1–V3 and passed Hibernate validation. GraphProjection used a real Neo4j 5.26 container. Seed tests checked idempotency, roles, and subtypes.
 
-Postojeća razvojna PostgreSQL šema: Hibernate `ddl-auto=validate` prošao uz
-`spring.flyway.enabled=false`, bez local/development profila i bez seeda,
-sa isključenim zakazanim poslovima. Privremeni backend na 127.0.0.1:8082
-uspešno se pokrenuo i `/api/health` vratio UP. Zaustavljen je samo taj Java
-proces. SQL provera potvrđuje V1/V2/V3 sa success=true. Prvi startup pokušaj
-bio je prerano pokrenut dok PostgreSQL još nije primao konekcije; ponovljeni
-pokušaj posle spremnosti baze je uspeo. Projektni PostgreSQL ostavljen je
-pokrenut; Docker Desktop je pokrenut za integracione testove.
+Frontend `npm test` passed 68 tests in five files. TypeScript noEmit and the Angular production build passed, with the existing `qrcode` CommonJS warning. An initial restricted build could not access parent directories; the approved execution succeeded.
 
-`git diff --check` je prošao. Git ne prati .env, target, node_modules ni logove;
-`.env.example` je očekivani šablon. Provera tipičnih privatnih ključeva/API
-tokena u praćenim fajlovima nije našla poklapanja; ovo nije iscrpan secret audit.
-`git diff` za migracije, EER i specifikaciju je prazan.
+Ignored local logs were `backend-final-verification.log`, `frontend-tests.log`, `frontend-build.log`, and `schema-validation.log`. The random process JWT secret was not committed or published.
 
-Responsive raspored postoji u CSS-u (jedna kolona na malim ekranima, prelom
-dugmadi i mobilni meni). Ovaj nastavak nije izvršio novu vizuelnu browser proveru;
-istorijske provere kataloga i Curator ekrana nalaze se u frontend dokumentaciji.
-To nije dokaz vizuelne provere novih Guide ekrana.
+A temporary backend on 127.0.0.1:8082 validated the existing development schema with Flyway execution and scheduled jobs disabled, no local/development profile, and no seed execution. Health returned UP. Only that temporary Java process was stopped. SQL confirmed successful V1/V2/V3 history. An initial connection attempt preceded database readiness; retry after readiness succeeded.
 
-## Ručno testiranje
+The whitespace check passed. Git ignored .env, target, node_modules, and logs. A limited pattern check found no typical private keys/API tokens in tracked files; this was not an exhaustive secret audit. Migration/EER/specification diffs were empty.
 
-1. Pokrenuti Docker i postojeće projektne baze prema README-u. Java 21,
-   postojeća lokalna konfiguracija i JWT_SECRET; iz backend direktorijuma
-   `mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local`. Za već formiranu
-   razvojnu šemu može se dodati `-Dspring-boot.run.arguments=--spring.flyway.enabled=false`;
-   Hibernate ostaje `ddl-auto=validate`. Iz frontend pokrenuti `npm start`.
-2. Anonimno otvoriti localhost:4200/exhibits, detalj, /authors i detalj autora.
-   Proveriti filtere, prazne rezultate, nepostojeći ID i odsustvo QR polja u JSON-u.
-3. Prijaviti demo.curator; očekivati /curator. Kreirati test autora i eksponat,
-   povezati autorstvo, izmeniti i ukloniti vezu. Kreirati učešće na postojećoj
-   izložbi; proveriti serverski QR i stabilnost posle izmene konteksta.
-4. Dodati TEKST referencu demo/grad-001.txt u novo učešće, izmeniti verziju.
-   Brisanje učešća sa sadržajem treba da daje 409. Ukloniti samo sopstvene test
-   zapise obrnutim redom. Ne brisati seed ili istoriju poseta.
-5. Prijaviti demo.guide; očekivati /guide i Pregled, Događaji, Prijave, Profil,
-   Odjava. Osvežiti stranicu. Kreirati budući događaj kapaciteta 1 na izložbi,
-   izabrati sebe kao vodiča. Izmeniti naziv i proveriti listu/dashboard.
-6. Kao demo.visitor otvoriti /events, odabrati događaj i prijaviti se. Očekivati
-   PRIJAVLJEN i 0 slobodnih mesta. Pokušaj drugog visitora daje 409; ponovni POST
-   prvog visitora takođe 409. Konkurentnu trku poslednjeg mesta proverava test.
-7. Visitor otkazuje uz potvrdu; mesto se oslobađa. Ponoviti prijavu. Vodič u
-   Prijavama vidi ime/prezime i menja status u PRISUSTVOVAO. Visitor više nema
-   otkazivanje. Otkazan/završen/već počeo događaj ne dozvoljava novu prijavu.
-8. Vodič pokušava brisanje događaja sa prijavama: 409; događaj ostaje. Kreirati
-   drugi događaj bez prijava i obrisati ga uz potvrdu. Ne smanjuje se kapacitet
-   ispod zauzetih mesta. Neispravni datumi daju poruku validacije.
-9. Preći između dve edit adrese događaja/autora i proveriti novi naziv i ID
-   pre čuvanja. Back/forward i direktno osvežavanje moraju učitati odgovarajući zapis.
-10. Kao visitor/cashier/curator direktno otvoriti /guide/events: zabrana.
-    Bez prijave otvaranje /guide vodi na login. Direktni API write bez tokena
-    daje 401, a sa nedozvoljenom ulogom 403. Visitor ne dobija listu drugih prijava.
-11. Regresija: visitor kupuje kartu, staff je validira, visitor otvara aktivnu
-    posetu, skenira pripadajući QR, otvara sadržaj, preporuke i preporučenu rutu.
-12. Na 320, 375, 390, 768 i 1440 px proveriti Guide listu/formu/prijave i visitor
-    detalj: bez horizontalnog skrola, čitljivi nazivi, mobilni meni, fokus tastature.
-    Za loading/error isključiti mrežu i zatim koristiti Osveži/Pokušaj ponovo.
+No new visual browser review of Guide pages was performed during this continuation. Existing responsive CSS and previous Curator checks did not establish visual verification of the new Guide screens.
 
-## Preostalo za ceo projekat
+## Manual verification sequence
 
-- Manager analitika: API, agregacije/izveštaji, prava i frontend prema specifikaciji.
-- Administrator frontend i namenski demo nalog ako bude zatražen.
-- Cashier frontend prodaje (backend već postoji), ukoliko se zatvara ceo obim uloge.
-- Nova vizuelna i ručna end-to-end provera Guide ekrana na stvarnom local serveru.
-- Produkciona naplata/storage/deployment nisu obuhvaćeni demo implementacijom.
-  Digitalni sadržaj trenutno čuva reference; nema upload infrastrukture.
-- Liste nemaju serversku paginaciju. Dalje proširenje obima uskladiti sa odobrenom
-  specifikacijom; ovaj rad je nije menjao niti pretpostavio nove entitete.
+Use current accounts and startup instructions from the root README when repeating these checks.
 
-## Fajlovi ovog nastavka
+1. Start the dependencies, backend, and frontend with a configured JWT secret. Preserve existing data and applied migrations.
+2. Check anonymous exhibit/author browsing, filters, empty results, missing IDs, and absence of internal QR fields in public DTOs.
+3. As curator, create disposable author/exhibit records, manage authorship, create a participation, and confirm stable QR identity after editing context.
+4. Add content and check conflicts when deleting dependent participation. Remove only disposable records in dependency order.
+5. As guide, create a future event with capacity 1, select the guide, edit its name, and check the list/dashboard and session refresh.
+6. As visitor, register and confirm the place is occupied. Duplicate registration or a second visitor's attempt must fail; concurrency is also covered by integration tests.
+7. Cancel, register again, and mark attendance as guide. Confirm that attended registrations cannot be cancelled by the visitor and closed events reject new registrations.
+8. Check restricted deletion of an event with history, deletion of a disposable event without history, invalid dates, and rejection of reducing capacity below occupied places.
+9. Navigate between different event/author edit URLs and confirm the correct record before saving, including browser back/forward and refresh.
+10. Check Guide route denial for other roles, anonymous login redirects, API 401/403 responses, and registration-list privacy.
+11. Exercise purchase, cashier validation, active visit, matching QR scan, content, recommendations, and routes.
+12. Inspect Guide and visitor pages at phone/tablet/desktop widths, keyboard focus, long labels, loading/error states, and retry behavior.
 
-Pored sačuvanih ranijih izmena, ovaj nastavak menja/dodaje:
+## Outstanding work recorded at that date
 
-- backend/mvnw.cmd
-- backend/src/main/java/rs/ac/uns/ftn/museum/people/controller/EventController.java
-- backend/src/main/java/rs/ac/uns/ftn/museum/people/dto/ManagedRegistrationResponse.java (nov)
-- backend/src/main/java/rs/ac/uns/ftn/museum/people/repository/EventRegistrationRepository.java
-- backend/src/main/java/rs/ac/uns/ftn/museum/people/service/EventService.java
-- backend/src/test/java/rs/ac/uns/ftn/museum/people/PeopleIntegrationTests.java
-- frontend/src/main.ts
-- frontend/src/app/core/route-reuse.ts (nov)
-- frontend/src/app/core/events.ts
-- frontend/src/app/pages/guide-registrations.ts
-- frontend/src/app/pages/guide-event-editor.ts
-- frontend/src/app/pages/events.spec.ts
-- frontend/src/app/pages/curator.spec.ts
-- frontend/src/app/routes.ts
-- database/demo-data-local.md
-- README.md
-- docs/continuation-2026-09-30.md (ovaj izveštaj)
+Manager analytics, dedicated Administrator UI, Cashier sales UI, and stored media were still pending then and were implemented later. A new visual Guide review, production payment/deployment configuration, and large-catalog pagination remained separate concerns. Refer to the later audit rather than treating this list as the current backlog.
 
-Trenutni status: 22 izmenjena praćena i 20 nepraćenih fajlova; ništa nije staged.
+## Historical file inventory
+
+The following snapshot records 22 modified tracked files and 20 untracked files at the end of that continuation. Nothing was staged. It is retained as historical context, not a current Git status:
 
 ```text
  M README.md
