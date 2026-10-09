@@ -16,6 +16,8 @@ Izolovani HTTP smoke test (`tmp/submission-smoke.ps1`) je prošao: registracija 
 
 Fizička kamera telefona, dozvola kamere, javni HTTPS origin i fizičko štampanje nisu proverljivi iz ovog okruženja. Za njih treba otvoriti aplikaciju preko stvarnog pouzdanog HTTPS domena sa telefona i odštampati QR tablu; `localhost` i običan HTTP sa LAN IP adresom nisu dovoljan uslov za mobilnu kameru.
 
+Za praktičnu demonstraciju koristi se Cloudflare quick tunnel: `cloudflared tunnel --url http://localhost:4200`. QR tabla se generiše tek nakon što se kustos prijavi preko iste `https://....trycloudflare.com` adrese koju će koristiti telefon, sa izabranom izložbom koja odgovara aktivnoj poseti i validiranoj ulaznici. QR kod sa prethodne localhost adrese ili sa druge tunnel adrese biće namerno odbijen. Posetilac zatim na telefonu otvara istu HTTPS adresu, ulazi u aktivnu posetu, dozvoljava kameru i skenira novu tablu. Posle svakog novog pokretanja quick tunnel-a tabla se generiše ponovo.
+
 ## Popravke urađene u ovoj proveri
 
 - Test istorijske ulaznice je usklađen sa pravilom baze da je snapshot kupljene ulaznice nepromenljiv; istorijski zapis se sada kreira sa istorijskim vremenima.

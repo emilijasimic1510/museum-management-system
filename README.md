@@ -62,6 +62,24 @@ Lokalni seed nalozi su `ana.petrovic@museum.local` (VISITOR), `milica.jovanovic@
 
 Kamera telefona zahteva dozvolu i pouzdan HTTPS origin. Običan `http://IP-racunara:4200` nije dovoljan; sama zamena `http` sa `https` ne postavlja TLS. HTTPS reverse proxy/tunel mora prosleđivati i frontend i `/api`. `frontend/public/runtime-config.js` određuje API i javni URL za QR kodove. Na telefonu QR ne sme sadržati `localhost`. Samopotpisani sertifikat nije pouzdano rešenje bez instaliranja poverenja na telefonu.
 
+## Testiranje QR skeniranja telefonom
+
+QR skeniranje proverava token učešća eksponata u okviru konkretne aktivne posete. Zato ulaznica, poseta i QR tabla moraju pripadati istoj izložbi. Isti muzej sam po sebi nije dovoljan.
+
+Za test na računaru, pokrenuti baze, backend i frontend, prijaviti se kao posetilac, otvoriti aktivnu posetu i kliknuti `Skeniraj eksponat`. Dozvoliti kameru računara i usmeriti je ka QR kodu sa kustoske QR table. Alternativno se može koristiti QR token kao ručna provera, ali to ne proverava fizičku kameru.
+
+Za test telefonom, u jednom CMD prozoru frontend mora da radi na portu 4200, a u drugom pokrenuti:
+
+```cmd
+cloudflared tunnel --url http://localhost:4200
+```
+
+Cloudflare ispisuje privremenu adresu oblika `https://....trycloudflare.com`. Tu istu HTTPS adresu otvoriti na računaru i telefonu. Kustos mora otvoriti QR tablu preko te HTTPS adrese, izabrati muzej i istu izložbu za koju je posetiocu blagajnik validirao ulaznicu, pa tek onda kliknuti `Pregled`/generisati QR tablu. QR kod treba štampati ili prikazati na drugom ekranu. Posetilac na telefonu otvara istu HTTPS adresu, prijavljuje se, ulazi u aktivnu posetu, klikne `Skeniraj eksponat`, dozvoljava kameru i skenira novi QR kod.
+
+QR kod generisan na `http://localhost:4200` ne treba skenirati na telefonu preko Cloudflare adrese, jer URL u QR kodu pripada drugom originu. Ako se `cloudflared` ponovo pokrene i dobije novu adresu, QR tabla se mora ponovo generisati dok je kustos prijavljen na toj novoj adresi. Poruka da QR URL mora pripadati ovom muzeju najčešće znači da je korišćena stara tabla, druga izložba ili druga HTTPS adresa.
+
+Posle uspešnog skena treba da se prikažu naziv eksponata, kontekstualni tekst, slika i audio ako su pripremljeni. Ponovljeni sken istog eksponata u istoj poseti je odbijen, a sken posle završetka posete više nije dozvoljen. Tunnel je privremen i važi samo dok je njegov CMD prozor otvoren.
+
 Digitalni sadržaj pripada učešću eksponata na konkretnoj izložbi. Za posetilački pristup potreban je odgovarajući tok ulaznice i posete. Kustos čuva tekst, a zatim posebno pokreće generisanje zvuka; čuvanje teksta samo po sebi ne generiše audio.
 
 TTS: `MUSEUM_TTS_PROVIDER=espeak` i `MUSEUM_TTS_ESPEAK_PATH`; alternativno `azure` uz `MUSEUM_TTS_AZURE_KEY`, `MUSEUM_TTS_AZURE_REGION`, `MUSEUM_TTS_AZURE_VOICE`, ili `piper` uz `MUSEUM_TTS_PIPER_PYTHON` i `MUSEUM_TTS_PIPER_MODEL`. Odgovarajući izvršni program/model/glas mora biti stvarno dostupan. Putanje skladišta: `MUSEUM_AUDIO_STORAGE_PATH`, `MUSEUM_TEXT_STORAGE_PATH`, `MUSEUM_IMAGE_STORAGE_PATH` (podrazumevano `backend/runtime/...` pri pokretanju iz backend direktorijuma).
